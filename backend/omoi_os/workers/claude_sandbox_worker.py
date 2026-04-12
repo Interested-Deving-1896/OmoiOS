@@ -118,9 +118,9 @@ class AgentDefinition:
 
 
 # Try to import Claude Agent SDK. Message/block types and ClaudeSDKClient are
-# consumed via the `omoi_os.agents.runtime` adapter (see Phase 1a migration);
-# only the hook + options types still need direct SDK imports here because
-# `to_sdk_options()` and `_create_pre_tool_hook()` build SDK-native objects.
+# consumed via the shared `agent_runtime` adapter package; only the hook +
+# options types still need direct SDK imports here because `to_sdk_options()`
+# and `_create_pre_tool_hook()` build SDK-native objects.
 try:
     from claude_agent_sdk import (
         # Client options (still built directly — see to_sdk_options)
@@ -136,7 +136,7 @@ try:
 except ImportError:
     SDK_AVAILABLE = False
 
-from omoi_os.agents.runtime import (
+from agent_runtime import (
     AgentRuntime,
     AssistantMessageEvent,
     ClaudeSDKRuntime,
@@ -3245,8 +3245,8 @@ python spec_cli.py api-trace
         Consumes the neutral event stream from an `AgentRuntime` adapter and
         forwards normalized events to the reporter. The translation from SDK
         messages/blocks to `RuntimeEvent`/`ContentPart` happens inside the
-        adapter (see `omoi_os.agents.runtime.claude_sdk`), so this function
-        only has to dispatch on the neutral types — no SDK imports needed.
+        adapter (see `agent_runtime.claude_sdk`), so this function only has
+        to dispatch on the neutral types — no SDK imports needed.
         """
         final_output = []
 

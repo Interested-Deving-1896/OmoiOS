@@ -13,9 +13,6 @@ These tests cover two layers:
    primed with a canned message stream. Verifies connect/disconnect
    idempotence, send_prompt forwarding, event iteration, early termination
    on `ResultEvent`, and the pre-connect error for `send_prompt`/`events`.
-
-Phase 1a ships the adapter with no callers; these tests are the only place
-exercising it until Phase 1b.
 """
 
 from __future__ import annotations
@@ -34,7 +31,7 @@ from claude_agent_sdk import (
     UserMessage,
 )
 
-from omoi_os.agents.runtime import (
+from agent_runtime import (
     AgentRuntime,
     AssistantMessageEvent,
     ClaudeSDKRuntime,
@@ -46,7 +43,7 @@ from omoi_os.agents.runtime import (
     ToolResultPart,
     UserMessageEvent,
 )
-from omoi_os.agents.runtime.claude_sdk import (
+from agent_runtime.claude_sdk import (
     _translate_block,
     _translate_message,
     _translate_usage,
@@ -359,7 +356,7 @@ def patch_sdk_client(monkeypatch: pytest.MonkeyPatch) -> list[FakeSDKClient]:
         constructed.append(client)
         return client
 
-    monkeypatch.setattr("omoi_os.agents.runtime.claude_sdk.ClaudeSDKClient", _factory)
+    monkeypatch.setattr("agent_runtime.claude_sdk.ClaudeSDKClient", _factory)
     return constructed
 
 
@@ -477,7 +474,7 @@ class TestClaudeSDKRuntimeLifecycle:
         ]
         fake = FakeSDKClient(messages=messages)
         monkeypatch.setattr(
-            "omoi_os.agents.runtime.claude_sdk.ClaudeSDKClient",
+            "agent_runtime.claude_sdk.ClaudeSDKClient",
             lambda *, options: fake,
         )
 

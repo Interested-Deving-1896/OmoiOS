@@ -1,9 +1,10 @@
 """Claude Agent SDK implementation of `AgentRuntime`.
 
 This adapter wraps `claude_agent_sdk.ClaudeSDKClient` behind the neutral
-`AgentRuntime` interface defined in `base.py`. It exists so Phase 1b can
-rewire `claude_sandbox_worker.py` and the spec-sandbox executor to call the
-adapter instead of the SDK directly, without changing behavior.
+`AgentRuntime` interface defined in `base.py`. Both `omoi-os` backend workers
+and the `spec-sandbox` phase executor consume it so they never import from
+`claude_agent_sdk` directly — the OpenCode cutover is a single-file swap
+inside this package.
 
 What this adapter does:
 
@@ -18,10 +19,10 @@ What this adapter explicitly does NOT do:
 
 * Build `ClaudeAgentOptions` — callers pass a fully-constructed options object.
   Options construction is a large surface area with environment variable
-  handling, hooks, tool allowlisting, etc.; keeping it in the caller for
-  Phase 1a means zero behavior change during the cutover.
-* Handle reporting/eventing — `_process_messages` in `claude_sandbox_worker.py`
-  still owns HTTP reporting; the adapter only normalizes the stream.
+  handling, hooks, tool allowlisting, etc.; keeping it in the caller means
+  zero behavior change during the SDK → OpenCode cutover.
+* Handle reporting/eventing — callers own downstream reporting; the adapter
+  only normalizes the stream.
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ from claude_agent_sdk import (
     UserMessage,
 )
 
-from omoi_os.agents.runtime.base import (
+from agent_runtime.base import (
     AgentRuntime,
     AssistantMessageEvent,
     ContentPart,

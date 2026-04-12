@@ -1,0 +1,29 @@
+[project]
+name = "agent-runtime"
+version = "0.1.0"
+description = "Provider-agnostic agent runtime adapter (Claude Agent SDK, OpenCode, ...)."
+license = { text = "Apache-2.0" }
+authors = [{ name = "Kevin Hill" }]
+requires-python = ">=3.12"
+dependencies = [
+    "claude-agent-sdk>=0.1.17",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.2,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "agent_runtime"
+module-root = "src"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]

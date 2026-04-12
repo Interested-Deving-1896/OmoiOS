@@ -34,7 +34,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from omoi_os.agents.runtime import ClaudeSDKRuntime
+from agent_runtime import ClaudeSDKRuntime
+
 from omoi_os.workers.claude_sandbox_worker import (
     SDK_AVAILABLE,
     EventReporter,

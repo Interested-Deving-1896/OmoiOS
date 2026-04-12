@@ -12,7 +12,10 @@ dependencies = [
     "pydantic>=2.7.0",
     "pydantic-settings>=2.3.0",
     "click>=8.1.0",
-    "claude-agent-sdk>=0.1.0",  # For SDK-based phase execution
+    # Phase execution goes through the provider-agnostic agent-runtime
+    # adapter, which transitively pulls in claude-agent-sdk today and will
+    # swap to OpenCode in phase 2.
+    "agent-runtime",
 ]
 
 [project.optional-dependencies]
@@ -21,6 +24,9 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
 ]
+
+[tool.uv.sources]
+agent-runtime = { workspace = true }
 
 [project.scripts]
 spec-sandbox = "spec_sandbox.cli:cli"

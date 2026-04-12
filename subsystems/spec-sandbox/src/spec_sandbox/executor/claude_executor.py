@@ -44,7 +44,18 @@ class ExecutorConfig:
     max_turns: int = 45  # Enough turns for exploration + write
     max_budget_usd: float = 20.0  # Allow thorough exploration
     allowed_tools: list[str] = field(
-        default_factory=lambda: ["Read", "Write", "Edit", "Glob", "Grep", "Bash", "Task", "Explore", "Agent", "Skill"]
+        default_factory=lambda: [
+            "Read",
+            "Write",
+            "Edit",
+            "Glob",
+            "Grep",
+            "Bash",
+            "Task",
+            "Explore",
+            "Agent",
+            "Skill",
+        ]
     )
     cwd: Optional[Path] = None
     timeout_seconds: int = 900  # 15 minutes per phase (increased for TASKS phase)
@@ -130,7 +141,9 @@ class ClaudeExecutor:
         context = context or {}
 
         # Build the prompt with context and eval feedback
-        prompt = self._build_prompt(phase, spec_title, spec_description, context, eval_feedback)
+        prompt = self._build_prompt(
+            phase, spec_title, spec_description, context, eval_feedback
+        )
 
         # Use mock if configured
         if self.config.use_mock:
@@ -223,19 +236,21 @@ Your previous output did not pass the quality evaluation. Please address the fol
         phase: SpecPhase,
         prompt: str,
     ) -> ExecutionResult:
-        """Execute using Claude Agent SDK with file-based output.
+        """Execute a phase through the provider-agnostic agent runtime.
 
-        Uses a temp file for JSON output which is more reliable than
-        parsing JSON from text output.
+        Uses a temp file for JSON output which is more reliable than parsing
+        JSON from text output. The `ClaudeSDKRuntime` wraps `ClaudeSDKClient`
+        today and will swap to OpenCode in phase 2 — this executor doesn't
+        have to care which backend is running.
         """
-        from claude_agent_sdk import (
-            AssistantMessage,
-            ClaudeAgentOptions,
-            ClaudeSDKClient,
-            ResultMessage,
-            TextBlock,
-            ToolUseBlock,
+        from agent_runtime import (
+            AssistantMessageEvent,
+            ClaudeSDKRuntime,
+            ResultEvent,
+            TextPart,
+            ToolCallPart,
         )
+        from claude_agent_sdk import ClaudeAgentOptions
 
         # Create temp directory for output file - use a persistent path in cwd
         # so the SDK subprocess can write to it
@@ -271,7 +286,7 @@ Your previous output did not pass the quality evaluation. Please address the fol
         cost_usd = 0.0
 
         try:
-            async with ClaudeSDKClient(options=options) as client:
+            async with ClaudeSDKRuntime(options=options) as runtime:
                 # Add output file path to prompt with emphasis
                 full_prompt = f"""{prompt}
 
@@ -279,29 +294,29 @@ Your previous output did not pass the quality evaluation. Please address the fol
 🚨 REQUIRED ACTION: Write your JSON output to: {output_file}
 Use the Write tool to create this file when your analysis is complete.
 The task is NOT finished until the JSON file has been written."""
-                await client.query(full_prompt)
+                await runtime.send_prompt(full_prompt)
 
-                # Use receive_messages() which is the correct method
-                async for message in client.receive_messages():
-                    if isinstance(message, AssistantMessage):
-                        for block in message.content:
-                            if isinstance(block, TextBlock):
-                                raw_output_parts.append(block.text)
+                # Iterate the normalized event stream. The adapter guarantees
+                # the iterator terminates after yielding the ResultEvent, so
+                # the old SDK-based loop's explicit `break` is unnecessary.
+                async for event in runtime.events():
+                    if isinstance(event, AssistantMessageEvent):
+                        for part in event.parts:
+                            if isinstance(part, TextPart):
+                                raw_output_parts.append(part.text)
                                 # Emit progress for significant text
-                                if len(block.text) > 50:
+                                if len(part.text) > 50:
                                     await self._emit_progress(
-                                        phase, f"Agent output: {block.text[:100]}..."
+                                        phase, f"Agent output: {part.text[:100]}..."
                                     )
-                            elif isinstance(block, ToolUseBlock):
+                            elif isinstance(part, ToolCallPart):
                                 tool_uses += 1
                                 await self._emit_progress(
-                                    phase, f"Tool use: {block.name}"
+                                    phase, f"Tool use: {part.name}"
                                 )
 
-                    elif isinstance(message, ResultMessage):
-                        cost_usd = message.total_cost_usd or 0.0
-                        # ResultMessage signals end of response
-                        break
+                    elif isinstance(event, ResultEvent):
+                        cost_usd = event.total_cost_usd
 
             # Join all text output
             raw_output = "\n".join(raw_output_parts)
@@ -435,9 +450,7 @@ Start by exploring, then write the JSON output file.
             )
             await self.reporter.report(event)
 
-    async def _mock_execute(
-        self, phase: SpecPhase, spec_title: str
-    ) -> ExecutionResult:
+    async def _mock_execute(self, phase: SpecPhase, spec_title: str) -> ExecutionResult:
         """Mock execution when SDK not available.
 
         Mock outputs are designed to pass evaluators with reasonable scores.
@@ -449,15 +462,37 @@ Start by exploring, then write the JSON output file.
             SpecPhase.EXPLORE: {
                 "codebase_summary": f"This is a comprehensive mock analysis for {spec_title}. The codebase follows modern Python patterns with a clear separation of concerns between API routes, services, and data models. Testing is done with pytest.",
                 "project_type": "web_application with REST API",
-                "tech_stack": ["Python 3.12+", "FastAPI", "PostgreSQL", "SQLAlchemy", "Pydantic"],
+                "tech_stack": [
+                    "Python 3.12+",
+                    "FastAPI",
+                    "PostgreSQL",
+                    "SQLAlchemy",
+                    "Pydantic",
+                ],
                 "key_files": [
-                    {"path": "src/main.py", "purpose": "Application entry point and FastAPI app creation"},
-                    {"path": "src/api/routes.py", "purpose": "API endpoint definitions"},
-                    {"path": "src/services/core.py", "purpose": "Core business logic services"},
-                    {"path": "src/models/base.py", "purpose": "SQLAlchemy model definitions"},
+                    {
+                        "path": "src/main.py",
+                        "purpose": "Application entry point and FastAPI app creation",
+                    },
+                    {
+                        "path": "src/api/routes.py",
+                        "purpose": "API endpoint definitions",
+                    },
+                    {
+                        "path": "src/services/core.py",
+                        "purpose": "Core business logic services",
+                    },
+                    {
+                        "path": "src/models/base.py",
+                        "purpose": "SQLAlchemy model definitions",
+                    },
                 ],
                 "relevant_patterns": [
-                    {"pattern": "Repository pattern", "description": "Data access abstraction", "files": ["src/repositories/"]},
+                    {
+                        "pattern": "Repository pattern",
+                        "description": "Data access abstraction",
+                        "files": ["src/repositories/"],
+                    },
                 ],
                 "entry_points": ["src/main.py"],
                 "test_structure": "pytest in tests/ with fixtures in conftest.py",
@@ -498,15 +533,30 @@ Start by exploring, then write the JSON output file.
                 },
                 "feature_summary": {
                     "name": spec_title,
-                    "scope_in": ["Core functionality", "Basic validation", "API endpoints"],
-                    "scope_out": ["Advanced analytics", "Mobile support", "Third-party integrations"],
+                    "scope_in": [
+                        "Core functionality",
+                        "Basic validation",
+                        "API endpoints",
+                    ],
+                    "scope_out": [
+                        "Advanced analytics",
+                        "Mobile support",
+                        "Third-party integrations",
+                    ],
                     "problem_statement": f"Users need {spec_title} to improve their workflow efficiency",
-                    "technical_constraints": ["Must work with existing auth system", "Database schema backward compatible"],
+                    "technical_constraints": [
+                        "Must work with existing auth system",
+                        "Database schema backward compatible",
+                    ],
                 },
                 "conventions": {
                     "naming": "snake_case for Python, camelCase for API",
                     "testing": "pytest with fixtures, 80% coverage target",
-                    "patterns": ["Repository pattern", "Service layer", "Dependency injection"],
+                    "patterns": [
+                        "Repository pattern",
+                        "Service layer",
+                        "Dependency injection",
+                    ],
                 },
             },
             SpecPhase.PRD: {
@@ -702,7 +752,11 @@ Start by exploring, then write the JSON output file.
                     "SDK available in production",
                     "Database connection is reliable",
                 ],
-                "out_of_scope": ["UI components", "Mobile application", "Real-time notifications"],
+                "out_of_scope": [
+                    "UI components",
+                    "Mobile application",
+                    "Real-time notifications",
+                ],
                 "open_questions": [],
                 # New fields required by enhanced evaluators
                 "traceability": {
@@ -724,7 +778,14 @@ Start by exploring, then write the JSON output file.
                         "type": "service",
                         "responsibility": "Core business logic for the feature",
                         "file_path": "src/services/feature.py",
-                        "interfaces": [{"method": "process", "inputs": {"data": "dict"}, "outputs": {"result": "dict"}, "description": "Process feature request"}],
+                        "interfaces": [
+                            {
+                                "method": "process",
+                                "inputs": {"data": "dict"},
+                                "outputs": {"result": "dict"},
+                                "description": "Process feature request",
+                            }
+                        ],
                         "dependencies": ["DatabaseService"],
                     },
                     {
@@ -732,14 +793,25 @@ Start by exploring, then write the JSON output file.
                         "type": "repository",
                         "responsibility": "Data access for feature entities",
                         "file_path": "src/repositories/feature.py",
-                        "interfaces": [{"method": "save", "inputs": {"entity": "Feature"}, "outputs": {"id": "str"}, "description": "Persist entity"}],
+                        "interfaces": [
+                            {
+                                "method": "save",
+                                "inputs": {"entity": "Feature"},
+                                "outputs": {"id": "str"},
+                                "description": "Persist entity",
+                            }
+                        ],
                         "dependencies": [],
                     },
                 ],
                 "data_models": [
                     {
                         "name": "Feature",
-                        "fields": {"id": "uuid", "name": "str", "created_at": "datetime"},
+                        "fields": {
+                            "id": "uuid",
+                            "name": "str",
+                            "created_at": "datetime",
+                        },
                         "purpose": "Main feature entity",
                         "indexes": ["id", "created_at"],
                         "constraints": ["name NOT NULL", "id PRIMARY KEY"],
@@ -757,12 +829,24 @@ Start by exploring, then write the JSON output file.
                     },
                 ],
                 "integration_points": [
-                    {"system": "Database", "protocol": "PostgreSQL", "purpose": "Data persistence"},
-                    {"system": "Cache", "protocol": "Redis", "purpose": "Response caching"},
+                    {
+                        "system": "Database",
+                        "protocol": "PostgreSQL",
+                        "purpose": "Data persistence",
+                    },
+                    {
+                        "system": "Cache",
+                        "protocol": "Redis",
+                        "purpose": "Response caching",
+                    },
                 ],
                 "error_handling": {
                     "strategy": "Exception hierarchy with custom error types",
-                    "error_types": ["ValidationError", "NotFoundError", "AuthorizationError"],
+                    "error_types": [
+                        "ValidationError",
+                        "NotFoundError",
+                        "AuthorizationError",
+                    ],
                     "logging": "Structured JSON logging to stdout",
                 },
                 "security_considerations": [
@@ -798,7 +882,10 @@ Start by exploring, then write the JSON output file.
                         "files_to_create": ["src/models/feature.py"],
                         "dependencies": {"depends_on": []},
                         "requirements_addressed": ["REQ-FEAT-CORE-001"],
-                        "acceptance_criteria": ["Model has all required fields", "Migrations run successfully"],
+                        "acceptance_criteria": [
+                            "Model has all required fields",
+                            "Migrations run successfully",
+                        ],
                         "estimated_hours": 2,
                     },
                     {
@@ -812,7 +899,10 @@ Start by exploring, then write the JSON output file.
                         "files_to_create": ["src/services/feature.py"],
                         "dependencies": {"depends_on": ["TSK-001"]},
                         "requirements_addressed": ["REQ-FEAT-CORE-001"],
-                        "acceptance_criteria": ["Service handles all use cases", "Unit tests pass"],
+                        "acceptance_criteria": [
+                            "Service handles all use cases",
+                            "Unit tests pass",
+                        ],
                         "estimated_hours": 3,
                     },
                     {
@@ -825,8 +915,14 @@ Start by exploring, then write the JSON output file.
                         "files_to_modify": ["src/api/routes.py"],
                         "files_to_create": [],
                         "dependencies": {"depends_on": ["TSK-002"]},
-                        "requirements_addressed": ["REQ-FEAT-CORE-001", "REQ-FEAT-PERF-002"],
-                        "acceptance_criteria": ["Endpoint returns correct response", "Integration tests pass"],
+                        "requirements_addressed": [
+                            "REQ-FEAT-CORE-001",
+                            "REQ-FEAT-PERF-002",
+                        ],
+                        "acceptance_criteria": [
+                            "Endpoint returns correct response",
+                            "Integration tests pass",
+                        ],
                         "estimated_hours": 2,
                     },
                 ],
