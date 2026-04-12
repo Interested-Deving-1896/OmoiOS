@@ -1,7 +1,10 @@
 """Unit tests for DaytonaSpawnerService service.
 
-Tests specifically for the spawn_for_phase method added for spec-driven development.
+Tests specifically for the spawn_for_phase method added for spec-driven development,
+plus the OpenCode runtime parameter guard.
 """
+
+import os
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -214,3 +217,64 @@ class TestDaytonaSpawnerPhaseMapping:
         for phase in sandbox_phases:
             # Each phase should have a corresponding mode
             assert phase.value in ["explore", "requirements", "design", "tasks", "sync"]
+
+
+class TestOpenCodeRuntimeGuard:
+    """Tests for the runtime='opencode' bootstrap guard (Option B)."""
+
+    @pytest.fixture
+    def mock_settings(self):
+        settings = MagicMock()
+        settings.daytona_api_key = "test-api-key"
+        settings.daytona_api_url = "https://api.daytona.io"
+        settings.daytona_runner_class = "default"
+        settings.sandbox_memory_gb = 4
+        settings.sandbox_cpu = 2
+        settings.sandbox_disk_gb = 10
+        settings.sandbox_auto_stop_interval = 3600
+        settings.target = "us"
+        return settings
+
+    @pytest.fixture
+    def spawner(self, mock_settings):
+        with patch(
+            "omoi_os.services.daytona_spawner.load_daytona_settings",
+            return_value=mock_settings,
+        ):
+            return DaytonaSpawnerService()
+
+    @pytest.mark.asyncio
+    async def test_opencode_raises_without_bootstrap_env(self, spawner):
+        """runtime='opencode' should raise when OPENCODE_SANDBOX_BOOTSTRAP_READY is not set."""
+        with patch.dict(os.environ, {}, clear=False):
+            # Make sure the guard env var is NOT set
+            os.environ.pop("OPENCODE_SANDBOX_BOOTSTRAP_READY", None)
+            with pytest.raises(
+                RuntimeError, match="sandbox bootstrap is not configured"
+            ):
+                await spawner.spawn_for_task(
+                    task_id="t1",
+                    agent_id="a1",
+                    phase_id="PHASE_IMPLEMENTATION",
+                    runtime="opencode",
+                )
+
+    @pytest.mark.asyncio
+    async def test_opencode_passes_with_bootstrap_env(self, spawner):
+        """runtime='opencode' should pass the guard when env var is set."""
+        with patch.dict(
+            os.environ,
+            {"OPENCODE_SANDBOX_BOOTSTRAP_READY": "1"},
+            clear=False,
+        ):
+            # The guard should pass. The spawner may fall back to a mock
+            # sandbox or fail for unrelated reasons (no real Daytona API),
+            # but it must NOT raise the guard error.
+            result = await spawner.spawn_for_task(
+                task_id="t1",
+                agent_id="a1",
+                phase_id="PHASE_IMPLEMENTATION",
+                runtime="opencode",
+            )
+            # Mock sandbox created — the guard didn't block us.
+            assert result is not None

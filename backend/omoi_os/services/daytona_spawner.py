@@ -11,6 +11,7 @@ The spawner:
 """
 
 import asyncio
+import os
 import shlex
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -144,7 +145,7 @@ class DaytonaSpawnerService:
         agent_type: Optional[str] = None,
         extra_env: Optional[Dict[str, str]] = None,
         labels: Optional[Dict[str, str]] = None,
-        runtime: str = "openhands",  # "openhands" or "claude"
+        runtime: str = "openhands",  # "openhands", "claude", or "opencode"
         execution_mode: str = "implementation",  # "exploration", "implementation", "validation"
         continuous_mode: Optional[
             bool
@@ -165,7 +166,7 @@ class DaytonaSpawnerService:
             agent_type: Optional agent type override
             extra_env: Additional environment variables
             labels: Labels for the sandbox
-            runtime: Agent runtime to use - "openhands" (default) or "claude"
+            runtime: Agent runtime to use - "openhands" (default), "claude", or "opencode"
             execution_mode: Skill loading mode - determines which skills are loaded
                 - "exploration": For feature definition (creates specs/tickets/tasks)
                 - "implementation": For task execution (writes code, default)
@@ -216,6 +217,23 @@ class DaytonaSpawnerService:
 
         if not self.daytona_api_key:
             raise RuntimeError("Daytona API key not configured")
+
+        # OpenCode runtime guard (Option B): the Python code path is complete
+        # but sandbox infra (opencode CLI install, sidecar startup) is not yet
+        # automated. Set OPENCODE_SANDBOX_BOOTSTRAP_READY=1 once your Daytona
+        # image ships with `opencode` installed and the sandbox bootstrap
+        # script starts `opencode serve` before the worker.
+        if runtime == "opencode" and not os.environ.get(
+            "OPENCODE_SANDBOX_BOOTSTRAP_READY"
+        ):
+            raise RuntimeError(
+                "runtime='opencode' selected but sandbox bootstrap is not "
+                "configured yet. Set OPENCODE_SANDBOX_BOOTSTRAP_READY=1 "
+                "once your Daytona image installs `opencode` and the "
+                "bootstrap script starts `opencode serve --port 4096` "
+                "before the Python worker. See OPENCODE-TODO markers in "
+                "daytona_spawner.py for the infra checklist."
+            )
 
         # Check if task already has a sandbox
         if task_id in self._task_to_sandbox:
@@ -296,7 +314,28 @@ class DaytonaSpawnerService:
             "IS_SANDBOX": "1",
             # Spec CLI env vars - API URL for syncing specs/tickets/tasks
             "OMOIOS_API_URL": base_url,
+            # Runtime selection — read by claude_sandbox_worker.py to pick
+            # between ClaudeSDKRuntime and OpenCodeRuntime.
+            "SANDBOX_RUNTIME": runtime
+            if runtime in ("claude", "opencode")
+            else "claude",
         }
+
+        # OpenCode-specific env vars
+        if runtime == "opencode":
+            # OPENCODE-TODO(phase-2c): the password should come from a secret
+            #   store, not be hardcoded. For dev, generate one per sandbox.
+            import secrets as _secrets
+
+            opencode_password = _secrets.token_urlsafe(24)
+            env_vars["OPENCODE_SERVER_PASSWORD"] = opencode_password
+            env_vars["OPENCODE_BASE_URL"] = "http://localhost:4096"
+            # OPENCODE-TODO(phase-2c): write provider API keys to
+            #   ~/.config/opencode/auth.json inside the sandbox bootstrap
+            #   script so `opencode serve` can authenticate with the LLM.
+            #   For now the worker passes them via OpenCodeOptions which
+            #   sends them per-prompt, but the server may also need them
+            #   for its own config.
 
         # Add spec skill enforcement if requested (from frontend dropdown)
         # This is the critical path for spec-driven development mode
@@ -419,7 +458,7 @@ class DaytonaSpawnerService:
                 "task_id": task_id,
             },
         )
-        if continuous_mode is None and runtime == "claude":
+        if continuous_mode is None and runtime in ("claude", "opencode"):
             # Auto-enable for implementation and validation modes
             # These modes need to ensure tasks complete fully (code pushed, PR created)
             effective_continuous_mode = execution_mode in (
@@ -437,7 +476,7 @@ class DaytonaSpawnerService:
             )
 
         # Add continuous mode settings if enabled
-        if effective_continuous_mode and runtime == "claude":
+        if effective_continuous_mode and runtime in ("claude", "opencode"):
             env_vars["CONTINUOUS_MODE"] = "true"
             # Default limits for continuous mode (can be overridden via extra_env)
             env_vars.setdefault("MAX_ITERATIONS", "10")
@@ -469,7 +508,7 @@ class DaytonaSpawnerService:
 
         # Set validation requirements based on task_requirements (LLM-analyzed) or execution_mode
         # task_requirements takes precedence when provided, as it's based on intelligent analysis
-        if runtime == "claude":
+        if runtime in ("claude", "opencode"):
             if task_requirements is not None:
                 # Use LLM-analyzed requirements for fine-grained control
                 env_vars.setdefault(
@@ -660,8 +699,8 @@ class DaytonaSpawnerService:
                         exc_info=True,
                     )
 
-        # Handle session resumption for Claude runtime
-        if runtime == "claude" and self.db:
+        # Handle session resumption for Claude/OpenCode runtime
+        if runtime in ("claude", "opencode") and self.db:
             resume_session_id = None
             resume_from_task = extra_env.get("RESUME_FROM_TASK") if extra_env else None
 
@@ -1504,7 +1543,15 @@ class DaytonaSpawnerService:
         # Install required packages based on runtime
         # Use uv for faster installation if available, fallback to pip
         logger.info(f"Installing {runtime} dependencies in sandbox...")
-        if runtime == "claude":
+        if runtime == "opencode":
+            # OpenCode: the agent-runtime adapter wraps the HTTP/SSE client.
+            # The actual `opencode` CLI is a Node binary that must be
+            # pre-installed in the Daytona image — see guard above.
+            # OPENCODE-TODO(phase-2c): once agent-runtime is published to PyPI
+            #   (or bundled as a wheel in the image), install it here. For now
+            #   we assume the image has it pre-installed.
+            install_cmd = "uv pip install httpx pydantic 2>/dev/null || pip install httpx pydantic"
+        elif runtime == "claude":
             # Claude Agent SDK - per docs/libraries/claude-agent-sdk-python-clean.md
             # Include pydantic for model serialization (model_dump support)
             install_cmd = "uv pip install claude-agent-sdk httpx pydantic 2>/dev/null || pip install claude-agent-sdk httpx pydantic"
@@ -1545,8 +1592,10 @@ class DaytonaSpawnerService:
             logger.warning(f"Failed to install GitHub CLI: {e}")
             # Continue without gh - agent can still use git commands directly
 
-        # Upload Claude skills to sandbox (Claude runtime only)
-        if runtime == "claude":
+        # Upload Claude/OpenCode skills to sandbox
+        # OpenCode reuses the same skill loading path — skills are MCP-driven
+        # and the worker's system prompt injection works the same way.
+        if runtime in ("claude", "opencode"):
             logger.info(f"Uploading Claude skills for '{execution_mode}' mode...")
             try:
                 # Create skills directory
@@ -1858,14 +1907,13 @@ class DaytonaSpawnerService:
         else:
             logger.debug("No GITHUB_REPO configured - skipping repository clone")
 
-        # Upload the appropriate worker script
-        # Note: Claude worker has continuous mode built-in, controlled by CONTINUOUS_MODE env var
-        if runtime == "claude":
+        # Upload the appropriate worker script.
+        # OpenCode reuses the same worker as Claude — the worker reads
+        # SANDBOX_RUNTIME to decide between ClaudeSDKRuntime and OpenCodeRuntime.
+        if runtime in ("claude", "opencode"):
             worker_script = self._get_claude_worker_script()
             if continuous_mode:
-                logger.info(
-                    "Using Claude worker with continuous mode enabled via environment"
-                )
+                logger.info("Using worker with continuous mode enabled via environment")
         else:
             worker_script = self._get_worker_script()
         sandbox.fs.upload_file(worker_script.encode("utf-8"), "/tmp/sandbox_worker.py")

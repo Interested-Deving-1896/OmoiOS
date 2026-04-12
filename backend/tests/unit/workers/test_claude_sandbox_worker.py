@@ -521,6 +521,57 @@ class TestWorkerConfig:
         assert config.task_id == "env-task"
         assert config.ticket_id == "env-ticket"
 
+    def test_sandbox_runtime_defaults_to_claude(self, clean_env):
+        """SANDBOX_RUNTIME should default to 'claude' when unset."""
+        env = {"ANTHROPIC_API_KEY": "test-key"}  # pragma: allowlist secret
+        with patch.dict(os.environ, env, clear=False):
+            config = WorkerConfig()
+        assert config.sandbox_runtime == "claude"
+
+    def test_sandbox_runtime_from_env(self, clean_env):
+        """SANDBOX_RUNTIME should be read from env."""
+        env = {
+            "SANDBOX_RUNTIME": "opencode",
+            "ANTHROPIC_API_KEY": "test-key",  # pragma: allowlist secret
+        }
+        with patch.dict(os.environ, env, clear=False):
+            config = WorkerConfig()
+        assert config.sandbox_runtime == "opencode"
+
+    def test_to_opencode_options(self, clean_env):
+        """to_opencode_options() should translate env config to OpenCodeOptions."""
+        env = {
+            "ANTHROPIC_API_KEY": "test-key",  # pragma: allowlist secret
+            "OPENCODE_BASE_URL": "http://localhost:9999",
+            "OPENCODE_SERVER_PASSWORD": "s3cret",
+            "MODEL": "claude-opus-4-6",
+            "TASK_ID": "task-42",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            config = WorkerConfig()
+            options = config.to_opencode_options()
+
+        assert options.base_url == "http://localhost:9999"
+        assert options.password == "s3cret"
+        assert options.username == "opencode"
+        assert options.provider_id == "anthropic"
+        assert options.model_id == "claude-opus-4-6"
+        assert options.session_title == "task-task-42"
+
+    def test_to_opencode_options_zai_provider(self, clean_env):
+        """to_opencode_options() should detect Z.AI provider from base URL."""
+        env = {
+            "ANTHROPIC_API_KEY": "test-key",  # pragma: allowlist secret
+            "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+            "MODEL": "glm-4.6v",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            config = WorkerConfig()
+            options = config.to_opencode_options()
+
+        assert options.provider_id == "zai"
+        assert options.model_id == "glm-4.6v"
+
 
 # ============================================================================
 # Tests: EventReporter

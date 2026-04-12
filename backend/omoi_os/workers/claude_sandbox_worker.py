@@ -863,6 +863,10 @@ class WorkerConfig:
         self.permission_mode = os.environ.get("PERMISSION_MODE", "bypassPermissions")
         self.cwd = os.environ.get("CWD", "/workspace")
 
+        # Runtime selection — "claude" (default) or "opencode". The spawner
+        # sets this based on the `runtime` parameter passed to spawn_for_task.
+        self.sandbox_runtime = os.environ.get("SANDBOX_RUNTIME", "claude")
+
         # System prompt - use append pattern to extend rather than replace
         # Build append text from enabled features
         append_parts = []
@@ -1996,6 +2000,36 @@ Systematically investigate issues:
         logger.info("=" * 80)
 
         return ClaudeAgentOptions(**options_kwargs)
+
+    def to_opencode_options(self) -> "OpenCodeOptions":
+        """Build an `OpenCodeOptions` from the same env-var config that
+        `to_sdk_options` reads.
+
+        The OpenCode server runs as a sidecar inside the sandbox listening on
+        `OPENCODE_BASE_URL` (default localhost:4096). Authentication uses
+        `OPENCODE_SERVER_PASSWORD`. Provider credentials are written to
+        OpenCode's config file by the sandbox bootstrap (see daytona_spawner
+        OPENCODE-TODO markers), not passed as env vars to the worker.
+        """
+        from agent_runtime import OpenCodeOptions
+
+        # Model: Claude SDK reads MODEL / ANTHROPIC_MODEL as a bare model ID.
+        # OpenCode needs (provider_id, model_id). We assume Anthropic for now;
+        # Phase 2c can add Z.AI / OpenAI provider routing.
+        model_id = self.model
+        provider_id = "anthropic"
+        if self.api_base_url and "z.ai" in self.api_base_url:
+            provider_id = "zai"
+
+        return OpenCodeOptions(
+            base_url=os.environ.get("OPENCODE_BASE_URL", "http://localhost:4096"),
+            password=os.environ.get("OPENCODE_SERVER_PASSWORD"),
+            username="opencode",
+            provider_id=provider_id,
+            model_id=model_id,
+            system=None,  # system prompt built by the worker, not the runtime
+            session_title=f"task-{self.task_id}" if self.task_id else None,
+        )
 
     def get_session_transcript_path(self, session_id: str) -> Path:
         """Get the path where session transcripts are stored.
@@ -4494,21 +4528,39 @@ The following dependencies were automatically installed before you started:
                     logger.warning("CLI stderr: %s", stripped)
 
             async with MessagePoller(self.config) as poller:
-                # Create hooks and options
-                pre_tool_hook = await self._create_pre_tool_hook()
-                post_tool_hook = await self._create_post_tool_hook()
-                sdk_options = self.config.to_sdk_options(
-                    pre_tool_hook=pre_tool_hook,
-                    post_tool_hook=post_tool_hook,
-                    stderr_callback=stderr_collector,
-                )
+                # Build the runtime based on SANDBOX_RUNTIME env var.
+                # Claude path: build hooks + ClaudeAgentOptions → ClaudeSDKRuntime.
+                # OpenCode path: build OpenCodeOptions → OpenCodeRuntime (no hooks).
+                if self.config.sandbox_runtime == "opencode":
+                    from agent_runtime import OpenCodeRuntime
+
+                    opencode_options = self.config.to_opencode_options()
+                    runtime_ctx = OpenCodeRuntime(opencode_options)
+                    logger.info(
+                        "Using OpenCode runtime",
+                        extra={
+                            "base_url": opencode_options.base_url,
+                            "provider_id": opencode_options.provider_id,
+                            "model_id": opencode_options.model_id,
+                        },
+                    )
+                else:
+                    pre_tool_hook = await self._create_pre_tool_hook()
+                    post_tool_hook = await self._create_post_tool_hook()
+                    sdk_options = self.config.to_sdk_options(
+                        pre_tool_hook=pre_tool_hook,
+                        post_tool_hook=post_tool_hook,
+                        stderr_callback=stderr_collector,
+                    )
+                    runtime_ctx = ClaudeSDKRuntime(options=sdk_options)
 
                 # Report startup
+                runtime_label = self.config.sandbox_runtime or "claude"
                 await reporter.report(
                     "agent.started",
                     {
                         "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "sdk": "claude_agent_sdk",
+                        "sdk": runtime_label,
                         "model": self.config.model or "default",
                         "task": self.config.task_description
                         or self.config.initial_prompt
@@ -4528,19 +4580,13 @@ The following dependencies were automatically installed before you started:
                     asyncio.create_task(preview_mgr.setup_preview())
 
                 try:
-                    # Debug: Log options structure before creating client
-                    logger.debug("Creating SDK runtime with options")
+                    # Debug: Log runtime creation
                     logger.debug(
-                        "SDK options type",
-                        extra={"options_type": str(type(sdk_options))},
+                        "Creating runtime",
+                        extra={"runtime_type": type(runtime_ctx).__name__},
                     )
-                    if hasattr(sdk_options, "hooks") and sdk_options.hooks:
-                        logger.debug(
-                            "Hooks present in SDK options",
-                            extra={"hooks": list(sdk_options.hooks.keys())},
-                        )
 
-                    async with ClaudeSDKRuntime(options=sdk_options) as runtime:
+                    async with runtime_ctx as runtime:
                         # Process initial prompt
                         # Priority: task_description (from TASK_DATA_BASE64) > initial_prompt > ticket_description > ticket_title
                         initial_task = (
