@@ -38,6 +38,7 @@ version = "0.1.0"
 source = { editable = "subsystems/agent-runtime" }
 dependencies = [
     { name = "claude-agent-sdk" },
+    { name = "httpx" },
 ]
 
 [package.optional-dependencies]
@@ -49,6 +50,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "claude-agent-sdk", specifier = ">=0.1.17" },
+    { name = "httpx", specifier = ">=0.27.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
 ]
