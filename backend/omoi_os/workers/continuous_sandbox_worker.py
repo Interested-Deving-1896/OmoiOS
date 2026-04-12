@@ -34,13 +34,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from omoi_os.agents.runtime import ClaudeSDKRuntime
 from omoi_os.workers.claude_sandbox_worker import (
-    SandboxWorker,
-    WorkerConfig,
+    SDK_AVAILABLE,
     EventReporter,
     MessagePoller,
-    ClaudeSDKClient,
-    SDK_AVAILABLE,
+    SandboxWorker,
+    WorkerConfig,
     logger,
 )
 
@@ -636,15 +636,18 @@ class ContinuousSandboxWorker(SandboxWorker):
             )
 
             # Execute iteration
-            async with ClaudeSDKClient(options=sdk_options) as client:
-                await client.query(enhanced_prompt)
-                result, output = await self._process_messages(client)
+            async with ClaudeSDKRuntime(options=sdk_options) as runtime:
+                await runtime.send_prompt(enhanced_prompt)
+                result, output = await self._process_messages(runtime)
 
                 if result:
-                    # Track cost and session
-                    iteration_cost = getattr(result, "total_cost_usd", 0.0) or 0.0
+                    # Track cost and session. `result` is now a ResultEvent
+                    # from the adapter rather than an SDK ResultMessage, but
+                    # it exposes the same field names so this call site stays
+                    # identical on the read side.
+                    iteration_cost = result.total_cost_usd
                     state.total_cost += iteration_cost
-                    state.last_session_id = getattr(result, "session_id", None)
+                    state.last_session_id = result.session_id
 
                     # Export transcript for cross-sandbox resumption
                     if state.last_session_id:

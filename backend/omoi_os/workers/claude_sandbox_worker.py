@@ -117,31 +117,37 @@ class AgentDefinition:
     model: Optional[str] = None
 
 
-# Try to import Claude Agent SDK
+# Try to import Claude Agent SDK. Message/block types and ClaudeSDKClient are
+# consumed via the `omoi_os.agents.runtime` adapter (see Phase 1a migration);
+# only the hook + options types still need direct SDK imports here because
+# `to_sdk_options()` and `_create_pre_tool_hook()` build SDK-native objects.
 try:
     from claude_agent_sdk import (
-        # Message types
-        AssistantMessage,
-        UserMessage,
-        SystemMessage,
-        ResultMessage,
-        # Content blocks
-        TextBlock,
-        ThinkingBlock,
-        ToolUseBlock,
-        ToolResultBlock,
-        # Client and options
+        # Client options (still built directly — see to_sdk_options)
         ClaudeAgentOptions,
-        ClaudeSDKClient,
-        HookMatcher,
-        HookInput,
+        # Hook types (still built directly — see _create_pre_tool_hook)
         HookContext,
+        HookInput,
         HookJSONOutput,
+        HookMatcher,
     )
 
     SDK_AVAILABLE = True
 except ImportError:
     SDK_AVAILABLE = False
+
+from omoi_os.agents.runtime import (
+    AgentRuntime,
+    AssistantMessageEvent,
+    ClaudeSDKRuntime,
+    ResultEvent,
+    SystemEvent,
+    TextPart,
+    ThinkingPart,
+    ToolCallPart,
+    ToolResultPart,
+    UserMessageEvent,
+)
 
 
 # =============================================================================
@@ -3232,9 +3238,16 @@ python spec_cli.py api-trace
 
     async def _process_messages(
         self,
-        client: "ClaudeSDKClient",
+        runtime: "AgentRuntime",
     ):
-        """Process streaming messages with comprehensive event tracking."""
+        """Process streaming runtime events with comprehensive event tracking.
+
+        Consumes the neutral event stream from an `AgentRuntime` adapter and
+        forwards normalized events to the reporter. The translation from SDK
+        messages/blocks to `RuntimeEvent`/`ContentPart` happens inside the
+        adapter (see `omoi_os.agents.runtime.claude_sdk`), so this function
+        only has to dispatch on the neutral types — no SDK imports needed.
+        """
         final_output = []
 
         # Ensure reporter is available
@@ -3243,9 +3256,9 @@ python spec_cli.py api-trace
             # Still process messages but without reporting
 
         try:
-            # Wrap receive_messages() with better error handling for SIGKILL (-9) errors
+            # Wrap events() with better error handling for SIGKILL (-9) errors
             try:
-                message_stream = client.receive_messages()
+                event_stream = runtime.events()
             except Exception as stream_init_error:
                 error_msg = str(stream_init_error)
                 logger.error(
@@ -3262,58 +3275,59 @@ python spec_cli.py api-trace
                     )
                 raise
 
-            async for msg in message_stream:
-                if isinstance(msg, AssistantMessage):
+            async for event in event_stream:
+                if isinstance(event, AssistantMessageEvent):
                     self.turn_count += 1
 
-                    # Report assistant message metadata
+                    # Report assistant message metadata.
+                    # `stop_reason` isn't carried on per-turn assistant messages
+                    # (it lives on the terminal ResultEvent), so we surface None
+                    # here to preserve the previous on-the-wire event shape.
                     if self.reporter:
                         await self.reporter.report(
                             "agent.assistant_message",
                             {
                                 "turn": self.turn_count,
-                                "model": getattr(msg, "model", self.config.model),
-                                "stop_reason": getattr(msg, "stop_reason", None),
-                                "block_count": len(msg.content),
+                                "model": event.model or self.config.model,
+                                "stop_reason": None,
+                                "block_count": len(event.parts),
                             },
                         )
 
-                    for block in msg.content:
-                        if isinstance(block, ThinkingBlock):
+                    for part in event.parts:
+                        if isinstance(part, ThinkingPart):
                             if self.reporter:
                                 await self.reporter.report(
                                     "agent.thinking",
                                     {
                                         "turn": self.turn_count,
-                                        "content": block.thinking,  # Full content
+                                        "content": part.thinking,  # Full content
                                         "thinking_type": "extended_thinking",
                                     },
                                 )
                             logger.debug(
                                 "Agent thinking",
-                                extra={"content_preview": block.thinking[:100]},
+                                extra={"content_preview": part.thinking[:100]},
                             )
 
-                        elif isinstance(block, ToolUseBlock):
+                        elif isinstance(part, ToolCallPart):
                             tool_event = {
                                 "turn": self.turn_count,
-                                "tool": block.name,
-                                "tool_use_id": block.id,
-                                "input": block.input,  # Full input
+                                "tool": part.name,
+                                "tool_use_id": part.id,
+                                "input": part.input,  # Full input
                             }
 
                             # Special handling for subagent dispatch
-                            if block.name == "Task":
+                            if part.name == "Task":
                                 tool_event["event_subtype"] = "subagent_invoked"
-                                tool_event["subagent_type"] = block.input.get(
+                                tool_event["subagent_type"] = part.input.get(
                                     "subagent_type"
                                 )
-                                tool_event["subagent_description"] = block.input.get(
+                                tool_event["subagent_description"] = part.input.get(
                                     "description"
                                 )
-                                tool_event["subagent_prompt"] = block.input.get(
-                                    "prompt"
-                                )
+                                tool_event["subagent_prompt"] = part.input.get("prompt")
                                 if self.reporter:
                                     await self.reporter.report(
                                         "agent.subagent_invoked", tool_event
@@ -3321,18 +3335,16 @@ python spec_cli.py api-trace
                                 logger.info(
                                     "Subagent invoked",
                                     extra={
-                                        "subagent_type": block.input.get(
-                                            "subagent_type"
-                                        )
+                                        "subagent_type": part.input.get("subagent_type")
                                     },
                                 )
 
                             # Special handling for skill invocation
-                            elif block.name == "Skill":
+                            elif part.name == "Skill":
                                 tool_event["event_subtype"] = "skill_invoked"
-                                tool_event["skill_name"] = block.input.get(
+                                tool_event["skill_name"] = part.input.get(
                                     "name"
-                                ) or block.input.get("skill_name")
+                                ) or part.input.get("skill_name")
                                 if self.reporter:
                                     await self.reporter.report(
                                         "agent.skill_invoked", tool_event
@@ -3349,16 +3361,16 @@ python spec_cli.py api-trace
                                     await self.reporter.report(
                                         "agent.tool_use", tool_event
                                     )
-                                logger.info("Tool use", extra={"tool": block.name})
+                                logger.info("Tool use", extra={"tool": part.name})
 
-                        elif isinstance(block, ToolResultBlock):
-                            result_content = str(block.content)
+                        elif isinstance(part, ToolResultPart):
+                            result_content = str(part.content)
                             if self.reporter:
                                 await self.reporter.report(
                                     "agent.tool_result",
                                     {
                                         "turn": self.turn_count,
-                                        "tool_use_id": block.tool_use_id,
+                                        "tool_use_id": part.tool_use_id,
                                         "result": (
                                             result_content[:5000]
                                             if len(result_content) > 5000
@@ -3366,54 +3378,53 @@ python spec_cli.py api-trace
                                         ),
                                         "result_truncated": len(result_content) > 5000,
                                         "result_full_length": len(result_content),
-                                        "is_error": getattr(block, "is_error", False),
+                                        "is_error": part.is_error,
                                     },
                                 )
-                            is_error = getattr(block, "is_error", False)
                             logger.debug(
                                 "Tool result",
                                 extra={
-                                    "is_error": is_error,
+                                    "is_error": part.is_error,
                                     "result_preview": result_content[:80],
                                 },
                             )
 
-                        elif isinstance(block, TextBlock):
+                        elif isinstance(part, TextPart):
                             if self.reporter:
                                 await self.reporter.report(
                                     "agent.message",
                                     {
                                         "turn": self.turn_count,
-                                        "content": block.text,  # Full content
-                                        "content_length": len(block.text),
+                                        "content": part.text,  # Full content
+                                        "content_length": len(part.text),
                                     },
                                 )
-                            final_output.append(block.text)
+                            final_output.append(part.text)
                             logger.debug(
                                 "Agent message",
-                                extra={"content_preview": block.text[:100]},
+                                extra={"content_preview": part.text[:100]},
                             )
 
-                elif isinstance(msg, UserMessage):
-                    for block in msg.content:
-                        if isinstance(block, TextBlock):
+                elif isinstance(event, UserMessageEvent):
+                    for part in event.parts:
+                        if isinstance(part, TextPart):
                             if self.reporter:
                                 await self.reporter.report(
                                     "agent.user_message",
                                     {
                                         "turn": self.turn_count,
-                                        "content": block.text,
-                                        "content_length": len(block.text),
+                                        "content": part.text,
+                                        "content_length": len(part.text),
                                     },
                                 )
-                        elif isinstance(block, ToolResultBlock):
-                            result_content = str(block.content)
+                        elif isinstance(part, ToolResultPart):
+                            result_content = str(part.content)
                             if self.reporter:
                                 await self.reporter.report(
                                     "agent.user_tool_result",
                                     {
                                         "turn": self.turn_count,
-                                        "tool_use_id": block.tool_use_id,
+                                        "tool_use_id": part.tool_use_id,
                                         "result": (
                                             result_content[:5000]
                                             if len(result_content) > 5000
@@ -3423,25 +3434,28 @@ python spec_cli.py api-trace
                                     },
                                 )
 
-                elif isinstance(msg, SystemMessage):
+                elif isinstance(event, SystemEvent):
                     if self.reporter:
+                        # NOTE: the pre-adapter code emitted `"metadata": {}`
+                        # because SDK SystemMessage has no `metadata` attribute
+                        # and the getattr default fired. We preserve that exact
+                        # wire shape here; Phase 2 can opt in to emitting
+                        # `event.data` (the real SDK `data` dict) if desired.
                         await self.reporter.report(
                             "agent.system_message",
                             {
                                 "turn": self.turn_count,
-                                "metadata": getattr(msg, "metadata", {}),
+                                "metadata": {},
                             },
                         )
 
-                elif isinstance(msg, ResultMessage):
-                    usage = getattr(msg, "usage", None)
-
+                elif isinstance(event, ResultEvent):
                     # Export session transcript for cross-sandbox resumption
                     transcript_b64 = None
-                    if hasattr(msg, "session_id") and msg.session_id:
+                    if event.session_id:
                         try:
                             transcript_b64 = self.config.export_session_transcript(
-                                msg.session_id
+                                event.session_id
                             )
                             if transcript_b64:
                                 logger.info(
@@ -3454,36 +3468,24 @@ python spec_cli.py api-trace
                                 extra={"error": str(e)},
                             )
 
-                    # Safely extract message attributes (handle both object and dict)
-                    num_turns = getattr(msg, "num_turns", None)
-                    total_cost_usd = getattr(msg, "total_cost_usd", 0.0)
-                    session_id = getattr(msg, "session_id", None)
-                    stop_reason = getattr(msg, "stop_reason", None)
+                    # Extract attributes (the adapter guarantees the shape, so
+                    # the old dict/object usage branching is no longer needed).
+                    num_turns = event.num_turns
+                    total_cost_usd = event.total_cost_usd
+                    session_id = event.session_id
+                    stop_reason = event.stop_reason
 
                     if self.reporter:
-                        # Handle usage as dict or object
                         input_tokens = None
                         output_tokens = None
                         cache_read_tokens = None
                         cache_write_tokens = None
 
-                        if usage:
-                            if isinstance(usage, dict):
-                                input_tokens = usage.get("input_tokens")
-                                output_tokens = usage.get("output_tokens")
-                                cache_read_tokens = usage.get("cache_read_input_tokens")
-                                cache_write_tokens = usage.get(
-                                    "cache_creation_input_tokens"
-                                )
-                            else:
-                                input_tokens = getattr(usage, "input_tokens", None)
-                                output_tokens = getattr(usage, "output_tokens", None)
-                                cache_read_tokens = getattr(
-                                    usage, "cache_read_input_tokens", None
-                                )
-                                cache_write_tokens = getattr(
-                                    usage, "cache_creation_input_tokens", None
-                                )
+                        if event.usage is not None:
+                            input_tokens = event.usage.input_tokens
+                            output_tokens = event.usage.output_tokens
+                            cache_read_tokens = event.usage.cache_read_tokens
+                            cache_write_tokens = event.usage.cache_write_tokens
 
                         # ALWAYS capture git/CI state before completion event
                         # This ensures artifacts are generated regardless of how agent completed
@@ -3587,7 +3589,7 @@ python spec_cli.py api-trace
                         "Agent completed",
                         extra={"turns": num_turns, "cost_usd": total_cost_usd},
                     )
-                    return msg, final_output
+                    return event, final_output
 
         except Exception as e:
             error_str = str(e)
@@ -4527,7 +4529,7 @@ The following dependencies were automatically installed before you started:
 
                 try:
                     # Debug: Log options structure before creating client
-                    logger.debug("Creating SDK client with options")
+                    logger.debug("Creating SDK runtime with options")
                     logger.debug(
                         "SDK options type",
                         extra={"options_type": str(type(sdk_options))},
@@ -4538,7 +4540,7 @@ The following dependencies were automatically installed before you started:
                             extra={"hooks": list(sdk_options.hooks.keys())},
                         )
 
-                    async with ClaudeSDKClient(options=sdk_options) as client:
+                    async with ClaudeSDKRuntime(options=sdk_options) as runtime:
                         # Process initial prompt
                         # Priority: task_description (from TASK_DATA_BASE64) > initial_prompt > ticket_description > ticket_title
                         initial_task = (
@@ -4682,9 +4684,9 @@ The following dependencies were automatically installed before you started:
                                     )
 
                                     try:
-                                        await client.query(iteration_prompt)
+                                        await runtime.send_prompt(iteration_prompt)
                                         result, output = await self._process_messages(
-                                            client
+                                            runtime
                                         )
 
                                         if result:
@@ -4841,8 +4843,8 @@ The following dependencies were automatically installed before you started:
                                     },
                                 )
                                 try:
-                                    await client.query(initial_task)
-                                    await self._process_messages(client)
+                                    await runtime.send_prompt(initial_task)
+                                    await self._process_messages(runtime)
                                 except Exception as e:
                                     logger.error(
                                         "Failed to process initial task",
@@ -4894,7 +4896,7 @@ The following dependencies were automatically installed before you started:
                             try:
                                 # Check for stop
                                 if self._should_stop:
-                                    await client.interrupt()
+                                    await runtime.interrupt()
                                     await reporter.report(
                                         "agent.interrupted",
                                         {
@@ -4928,7 +4930,7 @@ The following dependencies were automatically installed before you started:
                                     # Handle interrupt
                                     if msg_type == "interrupt":
                                         self._should_stop = True
-                                        await client.interrupt()
+                                        await runtime.interrupt()
                                         await reporter.report(
                                             "agent.interrupted",
                                             {
@@ -4955,8 +4957,8 @@ The following dependencies were automatically installed before you started:
 
                                     # Process message
                                     try:
-                                        await client.query(content)
-                                        await self._process_messages(client)
+                                        await runtime.send_prompt(content)
+                                        await self._process_messages(runtime)
                                     except Exception as e:
                                         logger.error(
                                             "Failed to process message",
