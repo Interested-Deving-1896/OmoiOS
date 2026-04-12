@@ -483,7 +483,7 @@ just db-downgrade                 # Rollback one migration
 | **ORM** | SQLAlchemy 2.0+ | Async database access |
 | **LLM** | Claude (Agent SDK) | AI agent backbone |
 | **Sandbox** | Daytona | Isolated workspace execution |
-| **Auth** | JWT + API Keys | Authentication + authorization |
+| **Auth** | JWT + httpOnly Cookies + API Keys | Authentication, token blacklist, account lockout |
 | **Observability** | Sentry + OpenTelemetry + Logfire | Monitoring + tracing |
 
 ## Project Structure
@@ -493,7 +493,7 @@ OmoiOS/
 ├── backend/                  # Python FastAPI backend
 │   ├── omoi_os/
 │   │   ├── api/routes/       # 40+ route modules
-│   │   ├── models/           # 75+ SQLAlchemy model classes
+│   │   ├── models/           # 100+ SQLAlchemy model classes
 │   │   ├── services/         # 100+ service modules
 │   │   └── workers/          # Orchestrator + task workers
 │   ├── migrations/versions/  # 70+ Alembic migrations
@@ -532,6 +532,7 @@ OmoiOS/
 | [Design System](docs/design_system.md) | Complete design system |
 | [Frontend Architecture](docs/design/frontend/frontend_architecture_shadcn_nextjs.md) | Frontend patterns + components |
 | [Monitoring Architecture](docs/requirements/monitoring/monitoring_architecture.md) | Guardian + Conductor system |
+| [Auth Quick Reference](docs/auth-system-quick-reference.md) | Auth endpoints, cookies, token lifecycle |
 | [Backend Guide](backend/CLAUDE.md) | Backend development reference |
 
 <details>
@@ -549,7 +550,7 @@ OmoiOS/
 | [Billing & Subscriptions](docs/architecture/08-billing-and-subscriptions.md) | Stripe, tiers, cost tracking |
 | [MCP Integration](docs/architecture/09-mcp-integration.md) | Model Context Protocol, circuit breakers |
 | [GitHub Integration](docs/architecture/10-github-integration.md) | Branch management, PR workflows |
-| [Database Schema](docs/architecture/11-database-schema.md) | PostgreSQL + pgvector, 75+ model classes |
+| [Database Schema](docs/architecture/11-database-schema.md) | PostgreSQL + pgvector, 100+ model classes |
 | [Configuration System](docs/architecture/12-configuration-system.md) | YAML + env, Pydantic validation |
 | [API Route Catalog](docs/architecture/13-api-route-catalog.md) | All FastAPI route modules |
 | [Integration Gaps](docs/architecture/14-integration-gaps.md) | Known issues, resolved gaps |
