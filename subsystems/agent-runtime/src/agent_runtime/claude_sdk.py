@@ -27,11 +27,14 @@ What this adapter explicitly does NOT do:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, AsyncIterator, Optional, cast
+from dataclasses import replace
+from typing import TYPE_CHECKING, Any, AsyncIterator, Optional, cast
 
 from claude_agent_sdk import (
     AssistantMessage,
     ClaudeSDKClient,
+    PermissionResultAllow,
+    PermissionResultDeny,
     ResultMessage,
     SystemMessage,
     TextBlock,
@@ -45,6 +48,8 @@ from agent_runtime.base import (
     AgentRuntime,
     AssistantMessageEvent,
     ContentPart,
+    PermissionDecision,
+    PermissionRequestEvent,
     ResultEvent,
     RuntimeEvent,
     SystemEvent,
@@ -57,7 +62,7 @@ from agent_runtime.base import (
 )
 
 if TYPE_CHECKING:
-    from claude_agent_sdk import ClaudeAgentOptions
+    from claude_agent_sdk import ClaudeAgentOptions, ToolPermissionContext
 
 
 class ClaudeSDKRuntime(AgentRuntime):
@@ -78,10 +83,26 @@ class ClaudeSDKRuntime(AgentRuntime):
 
     # ------------------------------------------------------------------ lifecycle
 
+    def _is_connected(self) -> bool:
+        return self._client is not None
+
     async def connect(self) -> None:
         if self._client is not None:
             return
-        client = ClaudeSDKClient(options=self._options)
+        options = self._options
+        if self._permission_handler is not None:
+            # Wire the neutral handler into the SDK's native can_use_tool slot.
+            # If the caller already set can_use_tool on their options we'd
+            # silently stomp it, which is a footgun — refuse instead.
+            if getattr(options, "can_use_tool", None) is not None:
+                raise RuntimeError(
+                    "ClaudeSDKRuntime: both on_permission_request() handler "
+                    "and options.can_use_tool are set. Pick one — either "
+                    "register the neutral handler OR build the SDK callback "
+                    "directly on your options, not both."
+                )
+            options = replace(options, can_use_tool=self._build_can_use_tool_wrapper())
+        client = ClaudeSDKClient(options=options)
         await client.connect()
         self._client = client
 
@@ -138,6 +159,59 @@ class ClaudeSDKRuntime(AgentRuntime):
                 "use `async with runtime:` or call `await runtime.connect()` first"
             )
         return self._client
+
+    def _build_can_use_tool_wrapper(self):
+        """Create a `CanUseTool` callable that delegates to the neutral handler.
+
+        The SDK signature is
+        `async (tool_name, tool_input, ToolPermissionContext) -> Allow|Deny`;
+        we translate that into our neutral `PermissionRequestEvent` + await
+        the registered handler + translate the `PermissionDecision` back
+        into the SDK's `PermissionResultAllow` / `PermissionResultDeny`.
+
+        Note the SDK has no native request id, so we synthesize one from
+        the tool name and input identity — good enough for the handler to
+        key on if it cares, though most policies won't.
+        """
+        handler = self._permission_handler
+        assert handler is not None  # guarded by caller
+
+        async def can_use_tool(
+            tool_name: str,
+            tool_input: dict[str, Any],
+            context: "ToolPermissionContext",
+        ):
+            event = PermissionRequestEvent(
+                id=f"claude-sdk:{tool_name}:{id(tool_input)}",
+                tool_name=tool_name,
+                tool_input=dict(tool_input),
+                patterns=[],
+                metadata={
+                    "signal": getattr(context, "signal", None),
+                    "suggestions": getattr(context, "suggestions", None),
+                },
+            )
+            decision: PermissionDecision = await handler(event)
+            if decision.allow:
+                # `updated_input=None` tells the SDK to use the original input
+                # unchanged. `updated_permissions=None` means "no broadening".
+                # Phase 2a deliberately does not surface scope="always" into
+                # `updated_permissions` — that requires building a
+                # PermissionUpdate list, which is SDK-specific glue we'd
+                # rather land in its own PR once we have a caller that needs
+                # session-wide approvals.
+                return PermissionResultAllow(
+                    behavior="allow",
+                    updated_input=None,
+                    updated_permissions=None,
+                )
+            return PermissionResultDeny(
+                behavior="deny",
+                message=decision.reason or "denied by permission handler",
+                interrupt=False,
+            )
+
+        return can_use_tool
 
 
 # =============================================================================

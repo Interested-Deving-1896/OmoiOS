@@ -35,6 +35,8 @@ from agent_runtime import (
     AgentRuntime,
     AssistantMessageEvent,
     ClaudeSDKRuntime,
+    PermissionDecision,
+    PermissionRequestEvent,
     ResultEvent,
     SystemEvent,
     TextPart,
@@ -539,3 +541,144 @@ class TestClaudeSDKRuntimeLifecycle:
             RuntimeError, match="set_permission_mode called before connect"
         ):
             await runtime.set_permission_mode("plan")
+
+
+# =============================================================================
+# ClaudeSDKRuntime permission handler wiring (phase 2a)
+# =============================================================================
+
+
+class TestClaudeSDKPermissionHandler:
+    """Tests for `on_permission_request` → `can_use_tool` translation."""
+
+    @pytest.mark.asyncio
+    async def test_handler_stored_before_connect(
+        self, patch_sdk_client: list[FakeSDKClient]
+    ) -> None:
+        from claude_agent_sdk import ClaudeAgentOptions
+
+        async def handler(req: PermissionRequestEvent) -> PermissionDecision:
+            return PermissionDecision(allow=True)
+
+        runtime = ClaudeSDKRuntime(options=ClaudeAgentOptions())
+        runtime.on_permission_request(handler)
+        assert runtime._permission_handler is handler
+
+    @pytest.mark.asyncio
+    async def test_registering_after_connect_raises(
+        self, patch_sdk_client: list[FakeSDKClient]
+    ) -> None:
+        from claude_agent_sdk import ClaudeAgentOptions
+
+        async def handler(req: PermissionRequestEvent) -> PermissionDecision:
+            return PermissionDecision(allow=True)
+
+        runtime = ClaudeSDKRuntime(options=ClaudeAgentOptions())
+        async with runtime:
+            with pytest.raises(
+                RuntimeError,
+                match="on_permission_request.*must be called before connect",
+            ):
+                runtime.on_permission_request(handler)
+
+    @pytest.mark.asyncio
+    async def test_connect_injects_can_use_tool_into_options(
+        self, patch_sdk_client: list[FakeSDKClient]
+    ) -> None:
+        from claude_agent_sdk import ClaudeAgentOptions
+
+        async def handler(req: PermissionRequestEvent) -> PermissionDecision:
+            return PermissionDecision(allow=True)
+
+        runtime = ClaudeSDKRuntime(options=ClaudeAgentOptions())
+        runtime.on_permission_request(handler)
+        async with runtime:
+            pass
+
+        # The fake client records the options it was constructed with;
+        # after connect, that options object should have `can_use_tool` set
+        # even though we didn't put it there ourselves.
+        assert len(patch_sdk_client) == 1
+        injected = patch_sdk_client[0].options
+        assert getattr(injected, "can_use_tool", None) is not None
+
+    @pytest.mark.asyncio
+    async def test_connect_refuses_when_options_already_have_can_use_tool(
+        self, patch_sdk_client: list[FakeSDKClient]
+    ) -> None:
+        from claude_agent_sdk import ClaudeAgentOptions
+
+        async def existing_callback(tool_name, tool_input, context):  # type: ignore[no-untyped-def]
+            from claude_agent_sdk import PermissionResultAllow
+
+            return PermissionResultAllow(
+                behavior="allow", updated_input=None, updated_permissions=None
+            )
+
+        async def handler(req: PermissionRequestEvent) -> PermissionDecision:
+            return PermissionDecision(allow=True)
+
+        options = ClaudeAgentOptions(can_use_tool=existing_callback)
+        runtime = ClaudeSDKRuntime(options=options)
+        runtime.on_permission_request(handler)
+
+        with pytest.raises(
+            RuntimeError,
+            match="both on_permission_request.*and options.can_use_tool are set",
+        ):
+            await runtime.connect()
+
+    @pytest.mark.asyncio
+    async def test_can_use_tool_wrapper_translates_allow(
+        self, patch_sdk_client: list[FakeSDKClient]
+    ) -> None:
+        """The wrapper should call our handler and return PermissionResultAllow."""
+        from claude_agent_sdk import ClaudeAgentOptions, PermissionResultAllow
+
+        calls: list[PermissionRequestEvent] = []
+
+        async def handler(req: PermissionRequestEvent) -> PermissionDecision:
+            calls.append(req)
+            return PermissionDecision(allow=True)
+
+        runtime = ClaudeSDKRuntime(options=ClaudeAgentOptions())
+        runtime.on_permission_request(handler)
+        async with runtime:
+            wrapper = patch_sdk_client[0].options.can_use_tool
+            assert wrapper is not None
+
+            class FakeContext:
+                signal = None
+                suggestions = None
+
+            result = await wrapper("Bash", {"cmd": "ls"}, FakeContext())
+
+        assert isinstance(result, PermissionResultAllow)
+        assert result.behavior == "allow"
+        assert len(calls) == 1
+        assert calls[0].tool_name == "Bash"
+        assert calls[0].tool_input == {"cmd": "ls"}
+
+    @pytest.mark.asyncio
+    async def test_can_use_tool_wrapper_translates_deny(
+        self, patch_sdk_client: list[FakeSDKClient]
+    ) -> None:
+        from claude_agent_sdk import ClaudeAgentOptions, PermissionResultDeny
+
+        async def handler(req: PermissionRequestEvent) -> PermissionDecision:
+            return PermissionDecision(allow=False, reason="too risky")
+
+        runtime = ClaudeSDKRuntime(options=ClaudeAgentOptions())
+        runtime.on_permission_request(handler)
+        async with runtime:
+            wrapper = patch_sdk_client[0].options.can_use_tool
+
+            class FakeContext:
+                signal = None
+                suggestions = None
+
+            result = await wrapper("Bash", {"cmd": "rm -rf /"}, FakeContext())
+
+        assert isinstance(result, PermissionResultDeny)
+        assert result.behavior == "deny"
+        assert result.message == "too risky"

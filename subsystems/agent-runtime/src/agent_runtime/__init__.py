@@ -15,6 +15,9 @@ from agent_runtime.base import (
     AgentRuntime,
     AssistantMessageEvent,
     ContentPart,
+    PermissionDecision,
+    PermissionHandler,
+    PermissionRequestEvent,
     ResultEvent,
     RuntimeEvent,
     SystemEvent,
@@ -26,12 +29,18 @@ from agent_runtime.base import (
     UserMessageEvent,
 )
 from agent_runtime.claude_sdk import ClaudeSDKRuntime
+from agent_runtime.opencode import OpenCodeOptions, OpenCodeRuntime
 
 __all__ = [
     "AgentRuntime",
     "AssistantMessageEvent",
     "ClaudeSDKRuntime",
     "ContentPart",
+    "OpenCodeOptions",
+    "OpenCodeRuntime",
+    "PermissionDecision",
+    "PermissionHandler",
+    "PermissionRequestEvent",
     "ResultEvent",
     "RuntimeEvent",
     "SystemEvent",

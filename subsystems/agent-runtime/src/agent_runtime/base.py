@@ -23,7 +23,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from types import TracebackType
-from typing import Any, AsyncIterator, Optional, Union
+from typing import Any, AsyncIterator, Awaitable, Callable, Literal, Optional, Union
 
 # =============================================================================
 # Content parts
@@ -152,6 +152,66 @@ RuntimeEvent = Union[
 
 
 # =============================================================================
+# Permission callbacks
+# =============================================================================
+
+
+@dataclass(frozen=True, slots=True)
+class PermissionRequestEvent:
+    """A backend-issued request for the caller to approve a tool invocation.
+
+    Field names are deliberately backend-neutral. Each adapter translates its
+    native permission-request shape into this:
+
+    * **Claude Agent SDK** — wired via `ClaudeAgentOptions.can_use_tool`; the
+      callback receives `(tool_name, tool_input, ToolPermissionContext)` which
+      map to `tool_name` + `tool_input` + `metadata={"signal", "suggestions"}`.
+      There is no native request id so adapters synthesize one.
+    * **OpenCode** — the `permission.asked` SSE event carries
+      `{id, sessionID, permission, patterns, metadata, always, tool?}`. The
+      OpenCode adapter maps `permission` → `tool_name`, `metadata` →
+      `tool_input`, and surfaces `patterns` directly; `always` and the
+      optional `tool` cross-reference live under `metadata`.
+    """
+
+    id: str
+    """Provider-issued id used to answer this specific request."""
+
+    tool_name: str
+    """Tool/permission key the agent is asking about (e.g. `"Bash"`, `"Edit"`)."""
+
+    tool_input: dict[str, Any]
+    """Tool-specific arguments — shape depends on the tool."""
+
+    patterns: list[str] = field(default_factory=list)
+    """Patterns this request would cover if approved (OpenCode native)."""
+
+    metadata: dict[str, Any] = field(default_factory=dict)
+    """Backend-specific extras (signals, suggestions, cross-references)."""
+
+
+@dataclass(frozen=True, slots=True)
+class PermissionDecision:
+    """Caller's answer to a `PermissionRequestEvent`.
+
+    `scope` controls whether the approval applies to a single invocation or
+    is remembered for the rest of the session. OpenCode supports both
+    natively (`reply: "once"|"always"`); the Claude SDK adapter maps
+    `scope="always"` by setting `updated_permissions` on its
+    `PermissionResultAllow`.
+    """
+
+    allow: bool
+    scope: Literal["once", "always"] = "once"
+    reason: Optional[str] = None
+    """Human-readable note; surfaced as a denial message or audit trail."""
+
+
+PermissionHandler = Callable[[PermissionRequestEvent], Awaitable[PermissionDecision]]
+"""Async callback invoked by `AgentRuntime.on_permission_request()`."""
+
+
+# =============================================================================
 # Runtime interface
 # =============================================================================
 
@@ -162,6 +222,7 @@ class AgentRuntime(ABC):
     Lifecycle:
 
         async with runtime:                         # connect/disconnect
+            runtime.on_permission_request(my_policy)  # optional, before connect
             await runtime.send_prompt("do X")
             async for event in runtime.events():
                 handle(event)
@@ -171,6 +232,9 @@ class AgentRuntime(ABC):
     Implementations must be safe to `connect()` exactly once per instance.
     Reconnecting after `disconnect()` is not required.
     """
+
+    _permission_handler: Optional[PermissionHandler] = None
+    """Registered permission callback (see `on_permission_request`)."""
 
     @abstractmethod
     async def connect(self) -> None:
@@ -216,6 +280,48 @@ class AgentRuntime(ABC):
     @abstractmethod
     async def set_model(self, model: str) -> None:
         """Change the model used for subsequent turns."""
+
+    def on_permission_request(self, handler: PermissionHandler) -> None:
+        """Register a handler for tool permission requests from the backend.
+
+        The handler is called whenever the agent wants to execute a tool that
+        requires approval. It receives a `PermissionRequestEvent` and returns
+        a `PermissionDecision` (allow/deny + optional scope).
+
+        Must be called BEFORE `connect()`. Calling it on a connected runtime
+        raises `RuntimeError` — the handler has to be in place when the
+        underlying client is built so the backend can wire it into options
+        (Claude SDK's `can_use_tool`) or its SSE permission loop
+        (OpenCode's `permission.asked` → `POST /permission/:id/reply`).
+
+        Subclasses store the handler via `_permission_handler`; the default
+        implementation is pure bookkeeping. Subclasses that need to inject
+        something at connect time (e.g. `ClaudeSDKRuntime` needs to clone
+        `ClaudeAgentOptions` with a `can_use_tool` wrapper) do that inside
+        their own `connect()`.
+        """
+        self._require_disconnected_for("on_permission_request")
+        self._permission_handler = handler
+
+    def _require_disconnected_for(self, op: str) -> None:
+        """Guard used by `on_permission_request` (and future pre-connect setters).
+
+        Subclasses override `_is_connected()` to signal whether the backend
+        has already been built and can no longer accept option changes.
+        """
+        if self._is_connected():
+            raise RuntimeError(
+                f"{op}() must be called before connect(); the permission "
+                "handler has to be present when the backend client is built"
+            )
+
+    def _is_connected(self) -> bool:
+        """Return True if the backend client is live.
+
+        Subclasses override this. Default assumes disconnected so base-class
+        instances (tests, mocks) don't trip the guard unexpectedly.
+        """
+        return False
 
     async def __aenter__(self) -> "AgentRuntime":
         await self.connect()
