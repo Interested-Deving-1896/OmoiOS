@@ -1,0 +1,160 @@
+{
+  "scanned_at": "2026-04-22T09:00:00Z",
+  "reconciliation_mode": "archive-and-augment",
+  "artifacts": [
+    {
+      "path": "./README.md",
+      "policy": "read-as-input",
+      "type": "root_readme"
+    },
+    {
+      "path": "./ARCHITECTURE.md",
+      "policy": "read-as-input-fold",
+      "type": "root_architecture"
+    },
+    {
+      "path": "./CONTRIBUTING.md",
+      "policy": "do-not-touch",
+      "type": "contributing"
+    },
+    {
+      "path": "./SECURITY.md",
+      "policy": "do-not-touch",
+      "type": "security"
+    },
+    {
+      "path": "./CLAUDE.md",
+      "policy": "read-as-input",
+      "type": "claude_instructions"
+    },
+    {
+      "path": "./AGENTS.md",
+      "policy": "read-as-input",
+      "type": "agent_instructions"
+    },
+    {
+      "path": "./docs/architecture/00_c4_model.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "00"
+    },
+    {
+      "path": "./docs/architecture/01-planning-system.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "01"
+    },
+    {
+      "path": "./docs/architecture/02-execution-system.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "02"
+    },
+    {
+      "path": "./docs/architecture/03-discovery-system.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "03"
+    },
+    {
+      "path": "./docs/architecture/04-readjustment-system.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "04"
+    },
+    {
+      "path": "./docs/architecture/05-frontend-architecture.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "05"
+    },
+    {
+      "path": "./docs/architecture/06-realtime-events.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "06"
+    },
+    {
+      "path": "./docs/architecture/07-auth-and-security.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "07"
+    },
+    {
+      "path": "./docs/architecture/08-billing-and-subscriptions.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "08"
+    },
+    {
+      "path": "./docs/architecture/09-mcp-integration.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "09"
+    },
+    {
+      "path": "./docs/architecture/10-github-integration.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "10"
+    },
+    {
+      "path": "./docs/architecture/11-database-schema.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "11"
+    },
+    {
+      "path": "./docs/architecture/12-configuration-system.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "12"
+    },
+    {
+      "path": "./docs/architecture/13-api-route-catalog.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "13"
+    },
+    {
+      "path": "./docs/architecture/14-integration-gaps.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "14"
+    },
+    {
+      "path": "./docs/architecture/15-llm-service.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "15"
+    },
+    {
+      "path": "./docs/architecture/16-service-catalog.md",
+      "policy": "preserve-and-index",
+      "type": "adr",
+      "adr_number": "16"
+    }
+  ],
+  "policies": {
+    "archive_path": "./docs/.archive-20260422-0900",
+    "preserved_adrs": [
+      "docs/architecture/00_c4_model.md",
+      "docs/architecture/01-planning-system.md",
+      "docs/architecture/02-execution-system.md",
+      "docs/architecture/03-discovery-system.md",
+      "docs/architecture/04-readjustment-system.md",
+      "docs/architecture/05-frontend-architecture.md",
+      "docs/architecture/06-realtime-events.md",
+      "docs/architecture/07-auth-and-security.md",
+      "docs/architecture/08-billing-and-subscriptions.md",
+      "docs/architecture/09-mcp-integration.md",
+      "docs/architecture/10-github-integration.md",
+      "docs/architecture/11-database-schema.md",
+      "docs/architecture/12-configuration-system.md",
+      "docs/architecture/13-api-route-catalog.md",
+      "docs/architecture/14-integration-gaps.md",
+      "docs/architecture/15-llm-service.md",
+      "docs/architecture/16-service-catalog.md"
+    ]
+  }
+}

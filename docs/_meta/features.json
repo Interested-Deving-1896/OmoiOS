@@ -1,0 +1,371 @@
+{
+  "generated_at": "2026-04-22T09:00:00Z",
+  "generator": "deep-docs-reducer",
+  "version": "1.0.0",
+  "project": "OmoiOS",
+  "domains": {
+    "backend": {
+      "name": "Backend API & Services",
+      "weight": 0.559,
+      "file_count": 706,
+      "features": [
+        {
+          "name": "FastAPI Application",
+          "description": "Core REST API with 40+ route modules",
+          "entry_point": "backend/omoi_os/api/main.py",
+          "key_files": [
+            "backend/omoi_os/api/main.py",
+            "backend/omoi_os/api/routes/*.py"
+          ],
+          "lines_of_code": 8500
+        },
+        {
+          "name": "Service Layer",
+          "description": "100+ business logic services",
+          "entry_point": "backend/omoi_os/services/__init__.py",
+          "key_files": [
+            "backend/omoi_os/services/task_queue.py",
+            "backend/omoi_os/services/agent_registry.py",
+            "backend/omoi_os/services/event_bus.py",
+            "backend/omoi_os/services/guardian.py",
+            "backend/omoi_os/services/database.py"
+          ],
+          "lines_of_code": 25000
+        },
+        {
+          "name": "SQLAlchemy Models",
+          "description": "75+ model classes for database entities",
+          "entry_point": "backend/omoi_os/models/base.py",
+          "key_files": [
+            "backend/omoi_os/models/spec.py",
+            "backend/omoi_os/models/task.py",
+            "backend/omoi_os/models/ticket.py",
+            "backend/omoi_os/models/agent.py"
+          ],
+          "lines_of_code": 8000
+        },
+        {
+          "name": "Background Workers",
+          "description": "Orchestrator and sandbox workers",
+          "entry_point": "backend/omoi_os/workers/orchestrator_worker.py",
+          "key_files": [
+            "backend/omoi_os/workers/orchestrator_worker.py",
+            "backend/omoi_os/workers/claude_sandbox_worker.py"
+          ],
+          "lines_of_code": 3500
+        },
+        {
+          "name": "Configuration System",
+          "description": "YAML + Environment configuration with Pydantic",
+          "entry_point": "backend/omoi_os/config.py",
+          "key_files": [
+            "backend/omoi_os/config.py",
+            "backend/config/base.yaml"
+          ],
+          "lines_of_code": 500
+        },
+        {
+          "name": "Task Queue with Dynamic Scoring",
+          "description": "Priority-based task scheduling with dependency resolution",
+          "entry_point": "backend/omoi_os/services/task_queue.py",
+          "key_files": [
+            "backend/omoi_os/services/task_queue.py",
+            "backend/omoi_os/services/task_scorer.py"
+          ],
+          "lines_of_code": 1200
+        },
+        {
+          "name": "Agent Registry",
+          "description": "Agent CRUD, capability matching, crypto identity",
+          "entry_point": "backend/omoi_os/services/agent_registry.py",
+          "key_files": [
+            "backend/omoi_os/services/agent_registry.py"
+          ],
+          "lines_of_code": 800
+        },
+        {
+          "name": "Event Bus Service",
+          "description": "Redis pub/sub for real-time system events",
+          "entry_point": "backend/omoi_os/services/event_bus.py",
+          "key_files": [
+            "backend/omoi_os/services/event_bus.py"
+          ],
+          "lines_of_code": 250
+        },
+        {
+          "name": "LLM Service",
+          "description": "Unified LLM interface with structured output support",
+          "entry_point": "backend/omoi_os/services/llm_service.py",
+          "key_files": [
+            "backend/omoi_os/services/llm_service.py",
+            "backend/omoi_os/services/pydantic_ai_service.py"
+          ],
+          "lines_of_code": 900
+        },
+        {
+          "name": "Guardian Service",
+          "description": "Emergency intervention and resource reallocation",
+          "entry_point": "backend/omoi_os/services/guardian.py",
+          "key_files": [
+            "backend/omoi_os/services/guardian.py",
+            "backend/omoi_os/services/intelligent_guardian.py"
+          ],
+          "lines_of_code": 1200
+        },
+        {
+          "name": "Billing Service",
+          "description": "Stripe integration, usage tracking, invoicing",
+          "entry_point": "backend/omoi_os/services/billing_service.py",
+          "key_files": [
+            "backend/omoi_os/services/billing_service.py",
+            "backend/omoi_os/services/stripe_service.py"
+          ],
+          "lines_of_code": 1500
+        },
+        {
+          "name": "Memory System",
+          "description": "Hybrid search with pgvector and full-text",
+          "entry_point": "backend/omoi_os/services/memory.py",
+          "key_files": [
+            "backend/omoi_os/services/memory.py",
+            "backend/omoi_os/services/embedding.py"
+          ],
+          "lines_of_code": 1500
+        },
+        {
+          "name": "Deduplication System",
+          "description": "SHA256 + semantic deduplication",
+          "entry_point": "backend/omoi_os/services/spec_dedup.py",
+          "key_files": [
+            "backend/omoi_os/services/spec_dedup.py",
+            "backend/omoi_os/services/task_dedup.py"
+          ],
+          "lines_of_code": 1200
+        }
+      ]
+    },
+    "frontend": {
+      "name": "Frontend Application",
+      "weight": 0.352,
+      "file_count": 500,
+      "features": [
+        {
+          "name": "Next.js 15 App Router",
+          "description": "60+ pages with App Router architecture",
+          "entry_point": "frontend/app/layout.tsx",
+          "key_files": [
+            "frontend/app/layout.tsx",
+            "frontend/app/(app)/layout.tsx",
+            "frontend/app/(app)/command/page.tsx"
+          ],
+          "lines_of_code": 8000
+        },
+        {
+          "name": "Three-Column Shell Layout",
+          "description": "IconRail + ContextualPanel + Main Content",
+          "entry_point": "frontend/components/layout/MainLayout.tsx",
+          "key_files": [
+            "frontend/components/layout/MainLayout.tsx",
+            "frontend/components/layout/IconRail.tsx",
+            "frontend/components/layout/ContextualPanel.tsx"
+          ],
+          "lines_of_code": 500
+        },
+        {
+          "name": "WebSocket Provider",
+          "description": "Real-time event streaming with auto-reconnect",
+          "entry_point": "frontend/providers/WebSocketProvider.tsx",
+          "key_files": [
+            "frontend/providers/WebSocketProvider.tsx"
+          ],
+          "lines_of_code": 200
+        },
+        {
+          "name": "Auth Provider",
+          "description": "JWT authentication with refresh token rotation",
+          "entry_point": "frontend/providers/AuthProvider.tsx",
+          "key_files": [
+            "frontend/providers/AuthProvider.tsx",
+            "frontend/lib/api/client.ts"
+          ],
+          "lines_of_code": 600
+        },
+        {
+          "name": "React Query Integration",
+          "description": "Server state management with caching",
+          "entry_point": "frontend/providers/QueryProvider.tsx",
+          "key_files": [
+            "frontend/providers/QueryProvider.tsx",
+            "frontend/hooks/useSpecs.ts",
+            "frontend/hooks/useProjects.ts"
+          ],
+          "lines_of_code": 1500
+        },
+        {
+          "name": "Spec-Driven Workflow Hooks",
+          "description": "Comprehensive spec lifecycle management",
+          "entry_point": "frontend/hooks/useSpecs.ts",
+          "key_files": [
+            "frontend/hooks/useSpecs.ts"
+          ],
+          "lines_of_code": 650
+        },
+        {
+          "name": "Sandbox Event Visualization",
+          "description": "Card-based event system with 12+ event types",
+          "entry_point": "frontend/components/sandbox/EventRenderer.tsx",
+          "key_files": [
+            "frontend/components/sandbox/EventRenderer.tsx"
+          ],
+          "lines_of_code": 1800
+        },
+        {
+          "name": "ShadCN UI Components",
+          "description": "40+ Radix-based UI primitives",
+          "entry_point": "frontend/components/ui/index.ts",
+          "key_files": [
+            "frontend/components/ui/button.tsx",
+            "frontend/components/ui/card.tsx",
+            "frontend/components/ui/dialog.tsx"
+          ],
+          "lines_of_code": 3000
+        },
+        {
+          "name": "Kanban Board",
+          "description": "Drag-and-drop board with @dnd-kit",
+          "entry_point": "frontend/app/(app)/board/[projectId]/page.tsx",
+          "key_files": [
+            "frontend/app/(app)/board/[projectId]/page.tsx"
+          ],
+          "lines_of_code": 400
+        },
+        {
+          "name": "Dependency Graph",
+          "description": "React Flow visualization for task DAGs",
+          "entry_point": "frontend/app/(app)/graph/[projectId]/page.tsx",
+          "key_files": [
+            "frontend/app/(app)/graph/[projectId]/page.tsx"
+          ],
+          "lines_of_code": 350
+        }
+      ]
+    },
+    "subsystems": {
+      "name": "Spec-Sandbox Subsystem",
+      "weight": 0.063,
+      "file_count": 80,
+      "features": [
+        {
+          "name": "Spec State Machine",
+          "description": "6-phase pipeline with quality gates",
+          "entry_point": "subsystems/spec-sandbox/src/spec_sandbox/worker/state_machine.py",
+          "key_files": [
+            "subsystems/spec-sandbox/src/spec_sandbox/worker/state_machine.py"
+          ],
+          "lines_of_code": 400
+        },
+        {
+          "name": "Claude Executor",
+          "description": "Claude Agent SDK wrapper with file-based output",
+          "entry_point": "subsystems/spec-sandbox/src/spec_sandbox/executor/claude_executor.py",
+          "key_files": [
+            "subsystems/spec-sandbox/src/spec_sandbox/executor/claude_executor.py"
+          ],
+          "lines_of_code": 350
+        },
+        {
+          "name": "Phase Evaluators",
+          "description": "Weighted scoring evaluators for each phase",
+          "entry_point": "subsystems/spec-sandbox/src/spec_sandbox/evaluators/phases.py",
+          "key_files": [
+            "subsystems/spec-sandbox/src/spec_sandbox/evaluators/phases.py",
+            "subsystems/spec-sandbox/src/spec_sandbox/evaluators/validation.py"
+          ],
+          "lines_of_code": 800
+        },
+        {
+          "name": "Reporter Abstraction",
+          "description": "Multi-environment event reporting (Array, JSONL, HTTP)",
+          "entry_point": "subsystems/spec-sandbox/src/spec_sandbox/reporters/base.py",
+          "key_files": [
+            "subsystems/spec-sandbox/src/spec_sandbox/reporters/base.py",
+            "subsystems/spec-sandbox/src/spec_sandbox/reporters/jsonl.py",
+            "subsystems/spec-sandbox/src/spec_sandbox/reporters/http.py"
+          ],
+          "lines_of_code": 250
+        },
+        {
+          "name": "Markdown Sync Service",
+          "description": "Syncs generated artifacts to OmoiOS backend",
+          "entry_point": "subsystems/spec-sandbox/src/spec_sandbox/sync/service.py",
+          "key_files": [
+            "subsystems/spec-sandbox/src/spec_sandbox/sync/service.py"
+          ],
+          "lines_of_code": 450
+        },
+        {
+          "name": "CLI Interface",
+          "description": "Click-based CLI for local spec execution",
+          "entry_point": "subsystems/spec-sandbox/src/spec_sandbox/cli.py",
+          "key_files": [
+            "subsystems/spec-sandbox/src/spec_sandbox/cli.py"
+          ],
+          "lines_of_code": 200
+        }
+      ]
+    }
+  },
+  "cross_cutting": {
+    "authentication": {
+      "type": "JWT + OAuth",
+      "providers": ["GitHub", "Google", "GitLab"],
+      "entry_point": "backend/omoi_os/api/routes/auth.py"
+    },
+    "database": {
+      "type": "PostgreSQL 16 + pgvector",
+      "models": 75,
+      "migrations": 70,
+      "entry_point": "backend/omoi_os/models/base.py"
+    },
+    "caching": {
+      "type": "Redis 7",
+      "uses": ["pub/sub", "task queue", "token blacklist"],
+      "entry_point": "backend/omoi_os/services/event_bus.py"
+    },
+    "sandboxing": {
+      "type": "Daytona",
+      "modes": ["exploration", "implementation", "validation"],
+      "entry_point": "backend/omoi_os/services/daytona_spawner.py"
+    },
+    "llm_integration": {
+      "providers": ["Claude", "Fireworks AI", "OpenAI"],
+      "entry_point": "backend/omoi_os/services/llm_service.py"
+    },
+    "billing": {
+      "provider": "Stripe",
+      "tiers": ["Free", "Pro", "Team", "Enterprise", "Lifetime", "BYO Platform"],
+      "entry_point": "backend/omoi_os/services/billing_service.py"
+    }
+  },
+  "statistics": {
+    "total_files": 1286,
+    "total_lines_of_code": 135000,
+    "documentation_lines": 35000,
+    "test_files": 150,
+    "architecture_decision_records": 19
+  },
+  "provenance": {
+    "source_files": [
+      "drafts/backend.md",
+      "drafts/frontend.md",
+      "drafts/subsystems.md",
+      ".inventory/domains.json",
+      ".inventory/tokei.json"
+    ],
+    "baseline_references": [
+      ".baseline/structure.md",
+      ".baseline/contents.md"
+    ],
+    "archived_files": "docs/.archive-20260422-0900/"
+  }
+}
