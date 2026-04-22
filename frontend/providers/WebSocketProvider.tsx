@@ -20,9 +20,48 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const socketRef = useRef<WebSocket | null>(null);
   const queryClient = useQueryClient();
+  const replayPath = process.env.NEXT_PUBLIC_EVENT_REPLAY;
+
+  // Event replay effect — runs when NEXT_PUBLIC_EVENT_REPLAY is set
+  useEffect(() => {
+    if (!replayPath) return;
+
+    let cancelled = false;
+
+    import("@/lib/dev/event-replay").then(async ({ EventReplayProvider, loadRecording }) => {
+      if (cancelled) return;
+      try {
+        const recording = await loadRecording(replayPath);
+        const replay = new EventReplayProvider(recording);
+
+        // Subscribe to all events and forward to query client
+        replay.subscribe("*", (event) => {
+          if (event.event_type.startsWith("ticket")) {
+            queryClient.invalidateQueries({ queryKey: ["tickets"] });
+          }
+          if (event.event_type.startsWith("agent")) {
+            queryClient.invalidateQueries({ queryKey: ["agents"] });
+          }
+        });
+
+        setIsConnected(true); // Simulate connection
+        replay.play(1.0);
+        console.log("[EventReplay] Playing recording:", replayPath);
+      } catch (err) {
+        console.error("[EventReplay] Failed to load recording:", err);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [replayPath, queryClient]);
 
   useEffect(() => {
+    if (replayPath) return; // Skip WebSocket when replaying
+
     let isMounted = true;
     let reconnectAttempts = 0;
     const MAX_RECONNECT_ATTEMPTS = 5;
@@ -123,6 +162,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         console.error("WebSocket error:", error);
       };
 
+      socketRef.current = ws;
       setSocket(ws);
     };
 
@@ -133,9 +173,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-      socket?.close();
+      socketRef.current?.close();
     };
-  }, [queryClient]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryClient, replayPath]);
 
   const send = (type: string, payload: any) => {
     if (socket?.readyState === WebSocket.OPEN) {

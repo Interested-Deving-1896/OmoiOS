@@ -82,6 +82,7 @@ from omoi_os.services.heartbeat_protocol import HeartbeatProtocolService
 from omoi_os.services.phase_gate import PhaseGateService
 from omoi_os.services.phase_manager import PhaseManager
 from omoi_os.services.resource_lock import ResourceLockService
+from omoi_os.services.session_agent_config_restorer import SessionAgentConfigRestorer
 from omoi_os.services.task_queue import TaskQueueService
 from omoi_os.services.ticket_workflow import TicketWorkflowOrchestrator
 
@@ -107,6 +108,7 @@ llm_service = None  # Unified LLM service  # Defined below in lifespan
 validation_orchestrator = None  # Defined below in lifespan
 ticket_workflow_orchestrator = None  # Defined below in lifespan
 monitoring_loop = None  # Intelligent monitoring loop  # Defined below in lifespan
+session_agent_config_restorer: SessionAgentConfigRestorer | None = None  # Session restoration after compaction
 
 
 async def orchestrator_loop():
@@ -116,7 +118,7 @@ async def orchestrator_loop():
     1. Legacy mode (SANDBOX_EXECUTION=false): Assigns to DB agents, workers poll
     2. Sandbox mode (SANDBOX_EXECUTION=true): Spawns Daytona sandboxes per task
     """
-    global db, queue, event_bus, registry_service
+    global db, queue, event_bus, registry_service, session_agent_config_restorer
 
     # Yield to event loop immediately so startup can complete
     await asyncio.sleep(0)
@@ -709,6 +711,7 @@ async def lifespan(app: FastAPI):
         ticket_workflow_orchestrator, \
         llm_service, \
         monitoring_loop, \
+        session_agent_config_restorer, \
         mcp_app
 
     app_settings = get_app_settings()
@@ -741,6 +744,13 @@ async def lifespan(app: FastAPI):
         db, event_bus, agent_status_manager
     )
     registry_service = AgentRegistryService(db, event_bus, agent_status_manager)
+    # Session agent configuration restorer for compaction recovery
+    session_agent_config_restorer = SessionAgentConfigRestorer(
+        db=db,
+        agent_registry=registry_service,
+        status_manager=agent_status_manager,
+        event_bus=event_bus,
+    )
     collaboration_service = CollaborationService(db, event_bus)
     lock_service = ResourceLockService(db)
     phase_gate_service = PhaseGateService(db)

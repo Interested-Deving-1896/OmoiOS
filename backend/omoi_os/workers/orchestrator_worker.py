@@ -21,12 +21,16 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, Optional
 from uuid import uuid4
+from omoi_os.utils.datetime import utc_now
 
 # Configure logging before any other imports that might log
 from omoi_os.logging import configure_logging, get_logger
 
 _env = os.environ.get("OMOIOS_ENV", "development")
 configure_logging(env=_env)  # type: ignore[arg-type]
+
+# Import SystemEvent at module level for dry-run event publishing
+from omoi_os.services.event_bus import SystemEvent
 
 if TYPE_CHECKING:
     from omoi_os.services.database import DatabaseService
@@ -941,7 +945,11 @@ async def orchestrator_loop():
     from omoi_os.config import get_app_settings
 
     settings = get_app_settings()
+    settings = get_app_settings()
     sandbox_execution = settings.daytona.sandbox_execution
+    # Dry-run mode: run decision loop but skip sandbox spawning
+    dry_run = settings.orchestrator.dry_run or os.getenv("ORCHESTRATOR_DRY_RUN", "").lower() in ("true", "1", "yes")
+    mode = "dry_run" if dry_run else ("sandbox" if sandbox_execution else "legacy")
     mode = "sandbox" if sandbox_execution else "legacy"
 
     # Get concurrency limit from environment (default: 5 concurrent tasks per project)
@@ -951,7 +959,23 @@ async def orchestrator_loop():
         max_concurrent_per_project=max_concurrent_per_project,
     )
 
-    # Initialize Daytona spawner if sandbox mode enabled
+    # Initialize Daytona spawner if sandbox mode enabled (skip in dry-run mode)
+    daytona_spawner = None
+    if sandbox_execution and not dry_run:
+        try:
+            from omoi_os.services.daytona_spawner import get_daytona_spawner
+
+            daytona_spawner = get_daytona_spawner(db=db, event_bus=event_bus)
+            logger.info("daytona_spawner_initialized", mode=mode)
+        except Exception as e:
+            logger.error("daytona_spawner_failed", error=str(e))
+            logger.warning("falling_back_to_legacy_mode")
+            sandbox_execution = False
+            mode = "legacy"
+    elif dry_run:
+        logger.info("dry_run_mode_enabled", mode=mode)
+    else:
+        logger.info("legacy_mode_enabled", mode=mode)
     daytona_spawner = None
     if sandbox_execution:
         try:
@@ -1039,6 +1063,50 @@ async def orchestrator_loop():
                     # Skip this task - it already has a sandbox
                     await asyncio.sleep(1)
                     continue
+
+                if dry_run:
+                    # Dry-run: capture what WOULD happen without spawning
+                    from omoi_os.workers.dry_run import DryRunDecision, TaskSummary
+
+                    selected_summary = TaskSummary(
+                        task_id=task_id,
+                        task_type=task.task_type or "unknown",
+                        description=task.description or "",
+                        priority=task.priority or "medium",
+                        phase_id=phase_id,
+                        ticket_id=str(task.ticket_id),
+                    )
+
+                    decision = DryRunDecision(
+                        cycle_number=cycle,
+                        timestamp=str(utc_now()),
+                        selected_task=selected_summary,
+                        selection_reason="Next pending task in queue",
+                        would_spawn_sandbox=sandbox_execution,
+                        would_create_branch=True,
+                    )
+
+                    # Publish dry-run event
+                    try:
+                        event_bus.publish(SystemEvent(
+                            event_type="orchestrator.dry_run.decision",
+                            entity_type="orchestrator",
+                            entity_id="dry-run",
+                            payload=decision.to_dict(),
+                        ))
+                    except Exception as pub_err:
+                        log.warning("dry_run_publish_failed", error=str(pub_err))
+
+                    log.info("dry_run_decision", cycle=cycle, task_id=task_id, task_type=task.task_type, would_spawn=sandbox_execution)
+                    stats["tasks_processed"] += 1
+
+                    # Wait before next cycle
+                    try:
+                        task_ready_event.clear()
+                        await asyncio.wait_for(task_ready_event.wait(), timeout=5)
+                    except asyncio.TimeoutError:
+                        pass
+                    continue  # Skip actual spawn
 
                 if sandbox_execution and daytona_spawner:
                     # Sandbox mode: spawn a Daytona sandbox for this task

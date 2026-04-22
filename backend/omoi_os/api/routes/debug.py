@@ -7,8 +7,12 @@ WARNING: These endpoints are intended for development/testing only.
 In production, they should be protected or disabled.
 """
 
+import base64
+import json
 from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from omoi_os.api.dependencies import (
@@ -23,6 +27,7 @@ from omoi_os.services.database import DatabaseService
 from omoi_os.services.task_queue import TaskQueueService
 from omoi_os.services.phase_gate import PhaseGateService
 from omoi_os.services.event_bus import EventBusService
+from omoi_os.services.task_context_builder import TaskContextBuilder
 
 router = APIRouter()
 
@@ -455,3 +460,119 @@ async def get_system_health(
         task_queue=True,  # If we got this far, it's working
         phase_progression_active=phase_progression_active,
     )
+
+
+# =============================================================================
+# Task Context Inspector
+# =============================================================================
+
+
+@router.get("/tasks/{task_id}/context")
+async def inspect_task_context(
+    task_id: str,
+    format: str = Query(
+        "markdown", description="Output format: markdown, json, or base64"
+    ),
+    current_user: User = Depends(get_current_user),
+    db: DatabaseService = Depends(get_db_service),
+):
+    """Inspect the full context that would be sent to an agent for this task.
+
+    This runs the same context-building pipeline as the orchestrator:
+    1. TaskContextBuilder.build_context() -> FullTaskContext
+    2. Optionally TaskRequirementsAnalyzer.analyze() -> execution requirements
+    3. Env var assembly (TASK_DATA_BASE64 encoding)
+
+    Formats:
+    - markdown: Human-readable context (default)
+    - json: Raw dictionary
+    - base64: Exact TASK_DATA_BASE64 as the agent would receive
+    """
+    context_builder = TaskContextBuilder(db=db)
+
+    try:
+        full_context = await context_builder.build_context(task_id)
+    except ValueError as e:
+        return JSONResponse(status_code=404, content={"detail": str(e)})
+
+    if format == "markdown":
+        return {
+            "format": "markdown",
+            "task_id": task_id,
+            "context": full_context.to_markdown(),
+        }
+    elif format == "json":
+        return {"format": "json", "task_id": task_id, "context": full_context.to_dict()}
+    elif format == "base64":
+        task_data = full_context.to_dict()
+        task_data["_markdown_context"] = full_context.to_markdown()
+        task_data_json = json.dumps(task_data)
+        encoded = base64.b64encode(task_data_json.encode()).decode()
+        return {
+            "format": "base64",
+            "task_id": task_id,
+            "task_data_base64": encoded,
+            "decoded_size_bytes": len(task_data_json.encode()),
+        }
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": f"Invalid format: {format}. Use markdown, json, or base64."
+            },
+        )
+
+
+@router.get("/branch-strategy/{spec_id}")
+async def preview_branch_strategy(spec_id: str):
+    """Preview the full branch strategy for a spec's tasks.
+
+    Returns per-task branch names, predicted merge order,
+    conflict predictions, and overall strategy assessment.
+    """
+    from omoi_os.services.branch_strategy_preview import BranchStrategyPreviewService
+    import dataclasses
+
+    preview_service = BranchStrategyPreviewService()
+
+    # Try to load real tasks from database, fall back to sample data
+    try:
+        from omoi_os.services.database import get_database
+
+        db = get_database()
+        with db.get_session() as session:
+            from sqlalchemy import text
+
+            result = session.execute(
+                text(
+                    "SELECT id, description, status FROM tasks WHERE spec_id = :spec_id"
+                ),
+                {"spec_id": spec_id},
+            )
+            rows = result.fetchall()
+            if rows:
+                tasks = [
+                    {
+                        "id": str(row[0]),
+                        "title": row[1] or "untitled",
+                        "type": "feature",
+                    }
+                    for row in rows
+                ]
+            else:
+                tasks = [
+                    {
+                        "id": f"sample-{i}",
+                        "title": f"Sample Task {i}",
+                        "type": "feature",
+                    }
+                    for i in range(1, 4)
+                ]
+    except Exception:
+        tasks = [
+            {"id": f"sample-{i}", "title": f"Sample Task {i}", "type": "feature"}
+            for i in range(1, 4)
+        ]
+
+    preview = preview_service.preview_full_strategy(spec_id=spec_id, tasks=tasks)
+    return dataclasses.asdict(preview)

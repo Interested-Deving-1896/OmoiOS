@@ -39,13 +39,11 @@ export function HeroSection({ className }: HeroSectionProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-
     setIsSubmitting(true);
-    // Small delay for visual feedback before redirect
-    setTimeout(() => {
-      router.push(`/register?email=${encodeURIComponent(email)}`);
-    }, 300);
+    const url = email
+      ? `/register?email=${encodeURIComponent(email)}`
+      : "/register";
+    setTimeout(() => router.push(url), 300);
   };
 
   useEffect(() => {
@@ -131,7 +129,6 @@ export function HeroSection({ className }: HeroSectionProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 flex-1 border-landing-border bg-white text-landing-text placeholder:text-landing-text-subtle"
-                required
                 disabled={isSubmitting}
               />
               <Button

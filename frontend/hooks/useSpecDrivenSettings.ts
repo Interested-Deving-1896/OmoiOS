@@ -1,11 +1,35 @@
 /**
- * React Query hooks for Spec-Driven Settings management
+ * @module useSpecDrivenSettings
+ * @description React Query hooks for Spec-Driven Settings management
  *
  * Manages settings for the spec-driven development workflow, including:
  * - Auto-execution mode (auto/manual)
  * - Coverage requirements
  * - Parallel execution toggles
  * - Validation mode (strict/relaxed)
+ *
+ * @example
+ * ```tsx
+ * function SettingsPanel() {
+ *   const { data: settings } = useSpecDrivenSettings();
+ *   const update = useUpdateSpecDrivenSettings();
+ *   const reset = useResetSpecDrivenSettings();
+ *
+ *   return (
+ *     <div>
+ *       <label>
+ *         Auto-execute:
+ *         <input
+ *           type="checkbox"
+ *           checked={settings?.auto_execute}
+ *           onChange={(e) => update.mutate({ auto_execute: e.target.checked })}
+ *         />
+ *       </label>
+ *       <button onClick={() => reset.mutate()}>Reset to Defaults</button>
+ *     </div>
+ *   );
+ * }
+ * ```
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -74,6 +98,16 @@ export interface SettingsWarning {
   severity: "warning" | "error";
 }
 
+/**
+ * Get warnings for potentially risky settings configurations
+ * @param settings - Partial settings to check
+ * @returns Array of warnings with field, message, and severity
+ * @example
+ * ```tsx
+ * const warnings = getSettingsWarnings({ auto_merge: true, validation_mode: "none" });
+ * // warnings = [{ field: "auto_merge", message: "...", severity: "warning" }]
+ * ```
+ */
 export function getSettingsWarnings(
   settings: Partial<SpecDrivenSettings>,
 ): SettingsWarning[] {
@@ -129,6 +163,16 @@ export interface ValidationError {
   message: string;
 }
 
+/**
+ * Validate settings values
+ * @param settings - Partial settings to validate
+ * @returns Array of validation errors with field and message
+ * @example
+ * ```tsx
+ * const errors = validateSettings({ coverage_threshold: 150 });
+ * // errors = [{ field: "coverage_threshold", message: "Coverage must be between 0 and 100" }]
+ * ```
+ */
 export function validateSettings(
   settings: Partial<SpecDrivenSettings>,
 ): ValidationError[] {
@@ -189,6 +233,14 @@ async function resetSpecDrivenSettings(): Promise<SpecDrivenSettings> {
 
 /**
  * Hook to fetch spec-driven settings
+ * @returns Query result with SpecDrivenSettings data
+ * @example
+ * ```tsx
+ * const { data: settings, isLoading, error } = useSpecDrivenSettings();
+ * if (isLoading) return <Spinner />;
+ * if (error) return <Error message={error.message} />;
+ * return <SettingsForm settings={settings} />;
+ * ```
  */
 export function useSpecDrivenSettings() {
   return useQuery({
@@ -199,6 +251,14 @@ export function useSpecDrivenSettings() {
 
 /**
  * Hook to update spec-driven settings
+ * @returns Mutation result for updating settings
+ * @example
+ * ```tsx
+ * const update = useUpdateSpecDrivenSettings();
+ * const handleToggle = (checked: boolean) => {
+ *   update.mutate({ auto_execute: checked });
+ * };
+ * ```
  */
 export function useUpdateSpecDrivenSettings() {
   const queryClient = useQueryClient();
@@ -214,6 +274,12 @@ export function useUpdateSpecDrivenSettings() {
 
 /**
  * Hook to reset spec-driven settings to defaults
+ * @returns Mutation result for resetting settings
+ * @example
+ * ```tsx
+ * const reset = useResetSpecDrivenSettings();
+ * return <button onClick={() => reset.mutate()}>Reset to Defaults</button>;
+ * ```
  */
 export function useResetSpecDrivenSettings() {
   const queryClient = useQueryClient();

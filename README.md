@@ -524,13 +524,11 @@ OmoiOS/
 
 | Document | Description |
 |----------|-------------|
-| **[Installation Runbook](docs/installation.md)** | AI-executable setup guide (automated install) |
+| **[Installation Runbook](CONTRIBUTING.md)** | Setup guide + contribution workflow |
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | Complete system architecture (start here) |
-| [Product Vision](docs/product_vision.md) | Full product vision + target audience |
-| [App Overview](docs/app_overview.md) | Core features + user flows |
-| [Page Architecture](docs/page_architecture.md) | All frontend pages detailed |
-| [Design System](docs/design_system.md) | Complete design system |
-| [Frontend Architecture](docs/design/frontend/frontend_architecture_shadcn_nextjs.md) | Frontend patterns + components |
+| [App Overview](ARCHITECTURE.md) | Core features + system overview |
+| [Page Architecture](UI.md) | All frontend pages detailed |
+| [Frontend Architecture](docs/architecture/05-frontend-architecture.md) | Frontend patterns + components |
 | [Monitoring Architecture](docs/requirements/monitoring/monitoring_architecture.md) | Guardian + Conductor system |
 | [Backend Guide](backend/CLAUDE.md) | Backend development reference |
 

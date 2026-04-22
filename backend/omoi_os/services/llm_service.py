@@ -208,7 +208,8 @@ def get_llm_service(settings: Optional[LLMSettings] = None) -> LLMService:
     """
     global _llm_service
     if _llm_service is None:
-        _llm_service = LLMService(settings=settings)
+        from omoi_os.services.llm_factory import create_llm_service
+        _llm_service = create_llm_service(settings=settings)
     return _llm_service
 
 

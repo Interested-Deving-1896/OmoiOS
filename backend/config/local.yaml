@@ -1,62 +1,35 @@
-# Local development overrides
-# Set credentials via .env or .env.local (never in this file)
+# config/local.yaml — Full local development, zero external services
+# Usage: OMOIOS_ENV=local just dev-all
+#
+# This overlay sets all providers to local mode so no external API keys
+# are needed. Secrets still come from .env / .env.local (never here).
+#
 # Pydantic priority: env vars > .env.local > .env > YAML defaults
 
 llm:
-  api_key: null  # Set LLM_API_KEY in .env or .env.local
-  model: openai/glm-4.7
-  base_url: https://api.z.ai/api/coding/paas/v4
-  fireworks_api_key: null  # Set LLM_FIREWORKS_API_KEY in .env or .env.local
+  mode: "null"  # Disable LLM calls (use null/replay mode)
+
+git:
+  provider: "local"  # Use local git instead of GitHub API
+
+sandbox:
+  provider: "local"  # Use local sandboxes instead of Daytona
+
+orchestrator:
+  dry_run: true  # Don't actually spawn sandboxes
+
+monitoring:
+  replay_mode: true  # Use replay mode for monitoring
+
+event_bus:
+  persist_events: true  # Persist events for replay
 
 database:
-  # Override with DATABASE_URL in .env or .env.local
-  url: postgresql+psycopg://postgres:postgres@localhost:15432/omoi_os
+  url: "postgresql+psycopg://postgres:postgres@localhost:15432/app_db"
 
 redis:
-  # Override with REDIS_URL in .env or .env.local
-  url: redis://localhost:16379
+  url: "redis://localhost:16379"
 
-workspace:
-  root: ./workspaces
-  worker_dir: /tmp/omoi_os_workspaces
 
-integrations:
-  # Override with MCP_SERVER_URL in .env or .env.local
-  mcp_server_url: http://localhost:18000/mcp
-  enable_mcp_tools: true
-
-embedding:
-  provider: fireworks
-  fireworks_api_key: null  # Set EMBEDDING_FIREWORKS_API_KEY in .env or .env.local
-  dimensions: 1536
-
-demo:
-  sdk_example: activate_skill
-  persistence_dir: ./.conversations
-  add_security_analyzer: false
-  confirm_all: true
-
-# Sentry error tracking (uses env vars for DSN)
-sentry:
-  environment: development
-  debug: false
-  traces_sample_rate: 0.1
-  profile_session_sample_rate: 0.1
-  enable_tracing: true
-
-# PostHog analytics (uses env vars for API key)
-posthog:
-  host: https://us.i.posthog.com
-  debug: false
-  disabled: false
-
-# Daytona sandbox configuration
-daytona:
-  api_url: https://app.daytona.io/api
-  target: us
-  image: nikolaik/python-nodejs:python3.12-nodejs22
-  snapshot: ai-agent-dev-light
-  timeout: 300
-  sandbox_memory_gb: 4
-  sandbox_cpu: 2
-  sandbox_disk_gb: 8
+spec:
+  fixture_mode: true

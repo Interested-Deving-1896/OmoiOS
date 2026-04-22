@@ -171,6 +171,9 @@ class LLMSettings(OmoiBaseSettings):
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     fireworks_api_key: Optional[str] = None
+    replay_strict: bool = False
+    recording_dir: str = ".llm-recordings"
+    mode: str = "live"  # "live" | "record" | "replay" | "null"
 
 
 class AnthropicSettings(OmoiBaseSettings):
@@ -517,6 +520,52 @@ class MonitoringSettings(OmoiBaseSettings):
     # Toggle for LLM-based analysis in Guardian and Conductor
     # Set MONITORING_LLM_ANALYSIS_ENABLED=false to disable LLM calls and save tokens
     llm_analysis_enabled: bool = True
+    replay_mode: bool = False
+    replay_dir: str = ".monitoring-recordings"
+
+class OrchestratorSettings(OmoiBaseSettings):
+    """Orchestrator worker configuration."""
+    yaml_section = "orchestrator"
+    model_config = SettingsConfigDict(
+        env_prefix="ORCHESTRATOR_",
+        extra="ignore",
+    )
+    dry_run: bool = False  # When True, orchestrator captures decisions without spawning sandboxes
+
+class GitSettings(OmoiBaseSettings):
+    """Git provider configuration."""
+    yaml_section = "git"
+    model_config = SettingsConfigDict(
+        env_prefix="GIT_",
+        extra="ignore",
+    )
+    provider: str = "github"  # "github" | "local"
+    local_repos_dir: str = ".local-repos"
+
+
+class SpecSettings(OmoiBaseSettings):
+    """Spec pipeline configuration."""
+    yaml_section = "spec"
+    model_config = SettingsConfigDict(
+        env_prefix="SPEC_",
+        extra="ignore",
+    )
+    fixture_mode: bool = False
+    fixture_dir: str = "subsystems/spec-sandbox/.claude/skills/spec-driven-dev/references"
+
+class SandboxSettings(OmoiBaseSettings):
+    """Sandbox provider configuration."""
+    yaml_section = "sandbox"
+    model_config = SettingsConfigDict(
+        env_prefix="SANDBOX_",
+        extra="ignore",
+    )
+    provider: str = "daytona"  # "daytona" | "local"
+    local_image: str = "nikolaik/python-nodejs:python3.12-nodejs22"
+    local_mount_workspace: Optional[str] = None
+    local_api_base_url: str = "http://host.docker.internal:18000"
+
+
 
 
 class DiagnosticSettings(OmoiBaseSettings):
@@ -797,6 +846,10 @@ def load_workspace_settings() -> WorkspaceSettings:
     return get_app_settings().workspace
 
 
+def load_orchestrator_settings() -> OrchestratorSettings:
+    return get_app_settings().orchestrator
+
+
 class AppSettings:
     def __init__(self) -> None:
         self.llm = LLMSettings()
@@ -808,6 +861,10 @@ class AppSettings:
         self.auth = AuthSettings()
         self.workspace = WorkspaceSettings()
         self.monitoring = MonitoringSettings()
+        self.orchestrator = OrchestratorSettings()
+        self.git = GitSettings()
+        self.spec = SpecSettings()
+        self.sandbox = SandboxSettings()
         self.diagnostic = DiagnosticSettings()
         self.worker = WorkerSettings()
         self.daytona = DaytonaSettings()

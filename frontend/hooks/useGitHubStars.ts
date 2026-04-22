@@ -2,6 +2,28 @@
 
 import { useEffect, useState } from "react";
 
+/**
+ * @module useGitHubStars
+ * @description React hook to fetch and cache GitHub repository star counts
+ *
+ * Fetches stargazer count from GitHub API with sessionStorage caching
+ * to reduce API calls. Cache TTL is 5 minutes.
+ *
+ * @example
+ * ```tsx
+ * function RepoCard({ repo }: { repo: string }) {
+ *   const stars = useGitHubStars(repo);
+ *
+ *   return (
+ *     <div>
+ *       <h3>{repo}</h3>
+ *       {stars !== null ? <span>⭐ {stars}</span> : <span>Loading...</span>}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+
 const CACHE_KEY = "github-stars-cache";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
@@ -10,6 +32,10 @@ interface CacheEntry {
   timestamp: number;
 }
 
+/**
+ * Get cached star count from sessionStorage
+ * @returns Cached count or null if expired/missing
+ */
 function getCached(): number | null {
   try {
     const raw = sessionStorage.getItem(CACHE_KEY);
@@ -22,6 +48,10 @@ function getCached(): number | null {
   }
 }
 
+/**
+ * Set star count in sessionStorage cache
+ * @param count - The star count to cache
+ */
 function setCache(count: number) {
   try {
     const entry: CacheEntry = { count, timestamp: Date.now() };
@@ -31,6 +61,11 @@ function setCache(count: number) {
   }
 }
 
+/**
+ * Hook to fetch GitHub star count for a repository
+ * @param repo - Repository identifier in "owner/repo" format
+ * @returns Star count or null if loading/error
+ */
 export function useGitHubStars(repo: string): number | null {
   const [stars, setStars] = useState<number | null>(() => getCached());
 
