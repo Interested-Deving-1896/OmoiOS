@@ -541,6 +541,6 @@ IF you discover:
 
 ## Related Documents
 
-- [Hephaestus Workflow Enhancements](./implementation/workflows/hephaestus_workflow_enhancements.md) - Current implementation
-- [User Journey](./user_journey.md) - Complete user flow
-- [Product Vision](./product_vision.md) - Product concept
+- `./implementation/workflows/hephaestus_workflow_enhancements.md` - Current implementation
+- `./user_journey.md` - Complete user flow
+- `./product_vision.md` - Product concept

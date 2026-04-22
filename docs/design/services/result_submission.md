@@ -1,662 +1,554 @@
-# Enhanced Result Submission Design Document
+# Result Submission Service
 
-**Created**: 2025-11-20
-**Status**: Draft
-**Purpose**: Design of the Enhanced Result Submission subsystem, detailing architecture, components, APIs, and integration patterns.
-**Related**: docs/requirements/workflows/result_submission.md, docs/design/multi_agent_orchestration.md, docs/design/validation_system.md, docs/requirements/workflows/validation_system.md, docs/requirements/workflows/task_queue_management.md, docs/requirements/workflows/ticket_workflow.md, docs/requirements/monitoring/fault_tolerance.md, docs/requirements/memory/memory_system.md
+> **Date**: 2025-07-20 | **Status**: Active | **Version**: 1.0 | **Owner**: Deep Docs Pipeline
+> **Source**: Generated from codebase analysis | **Cross-links**: See Related Documents section
 
----
+## Overview
 
+The Result Submission Service manages the submission, validation, and lifecycle of both task-level and workflow-level results. It provides a unified interface for agents to report their achievements, handles verification workflows, and integrates with the billing system for workflow completion tracking. The service supports markdown-based result documentation with automatic validation and event-driven notifications.
 
-## Document Overview
-
-**Purpose and Scope**:  
-This design document specifies the architecture, components, data models, APIs, and integration patterns for the Enhanced Result Submission subsystem. This system enables agents to declare definitive workflow results, validates them via validator agents, executes deterministic post-validation actions, and maintains full auditability with immutable, versioned records. Includes Memory System integration for persistence and context retrieval.
-
-**Target Audience**:  
-AI spec agents (Kiro, Cursor, Cline), implementation engineers, workflow orchestrator developers, system architects
-
-**Related Documents**:
-- **Requirements (Source of Truth)**: [`docs/requirements/workflows/result_submission.md`](../requirements/workflows/result_submission.md)
-- **Orchestration Design (Style Reference)**: [`docs/design/multi_agent_orchestration.md`](multi_agent_orchestration.md)
-- **Validation System Design (Validator Reuse Patterns)**: [`docs/design/validation_system.md`](validation_system.md) (referenced)
-- **Other Related Requirements**:
-  - [`docs/requirements/workflows/validation_system.md`](../requirements/workflows/validation_system.md)
-  - [`docs/requirements/workflows/task_queue_management.md`](../requirements/workflows/task_queue_management.md)
-  - [`docs/requirements/workflows/ticket_workflow.md`](../requirements/workflows/ticket_workflow.md)
-  - [`docs/requirements/monitoring/fault_tolerance.md`](../requirements/monitoring/fault_tolerance.md)
-  - [`docs/requirements/memory/memory_system.md`](../requirements/memory/memory_system.md)
-
----
-
-## Architecture Overview
-
-### High-Level Workflow
+## Architecture
 
 ```mermaid
-flowchart LR
-    A[Agent Worker] -->|POST /api/results/submit| B[Result Submission API]
-    B --> C[ResultSubmissionService]
-    C --> D[ResultRepository DB]
-    C --> E[ValidatorOrchestrator]
-    E --> F[Validation System / Validator Agent]
-    F -->|POST /api/results/validate| C
-    C --> G[WorkflowActionEngine]
-    G -->|on_result_found=stop_all| H[Workflow Orchestrator]
-    G -->|on_result_found=do_nothing| H
-    C --> I[MemoryIntegrationAdapter]
-    I --> J[Memory System]
-    C --> K[Event Bus / WebSocket Gateway]
+graph TB
+    subgraph "Result Submission Service"
+        RSS[ResultSubmissionService]
+        RTR[report_task_result]
+        VTR[verify_task_result]
+        GTR[get_task_results]
+        SWR[submit_workflow_result]
+        VWR[validate_workflow_result]
+        LWR[list_workflow_results]
+    end
+    
+    subgraph "Result Types"
+        AR[AgentResult]
+        WR[WorkflowResult]
+    end
+    
+    subgraph "External Services"
+        DB[(Database)]
+        EB[Event Bus]
+        BS[BillingService]
+        PL[PhaseLoader]
+    end
+    
+    RSS --> RTR
+    RSS --> VTR
+    RSS --> GTR
+    RSS --> SWR
+    RSS --> VWR
+    RSS --> LWR
+    
+    RTR --> AR
+    SWR --> WR
+    
+    RSS --> DB
+    RSS --> EB
+    RSS --> BS
+    RSS --> PL
 ```
 
-### Component Responsibilities
+## Key Components
 
-| Component | Layer | Primary Responsibility |
-|-----------|-------|----------------------|
-| Result Submission API | API / Edge | Expose `/api/results/submit`, `/api/results/validate`, `/api/workflows/{id}/results` |
-| ResultSubmissionService | Application | Orchestrate submission → validation → action pipeline; enforce immutability/versioning; emit events |
-| ValidatorOrchestrator | Application | Spawn validator agents or call Validation System API; enforce validator-only access |
-| WorkflowActionEngine | Orchestration | Execute post-validation actions (`stop_all` vs `do_nothing`) against Workflow Orchestrator |
-| ResultRepository | Persistence | Append-only storage of submissions, validation decisions, versioning, audit data |
-| MemoryIntegrationAdapter | Integration | Map validated results to Memory System entries; support context queries (REQ-ERS-MEM-001/002) |
-| WebSocket/Event Gateway | Infrastructure | Broadcast `result_submitted`, `result_validated`, `workflow_termination_requested` events |
-| AuthN/AuthZ Layer | Cross-cutting | Authenticate submitters; authorize validator agents (REQ-ERS-SEC-001) |
+### ResultSubmissionService Class
 
-### System Boundaries
-
-**Inside this subsystem**:
-- HTTP API endpoints specified in requirements
-- Data models and database schema for result submissions
-- Validator orchestration call sites (but not full Validation System implementation)
-- Workflow-level post-validation actions *as calls* to orchestrator
-- Memory System integration adapter (client-side)
-
-**Outside this subsystem**:
-- Core Workflow Orchestrator behavior (phase transitions, ticket states)
-- Validation System internals (state machine, review lifecycle)
-- Memory System storage internals (pgvector, hybrid search)
-- Monitoring and Fault Tolerance (only consume/emit events where necessary)
-
----
-
-## Component Details
-
-### Result Submission API
-
-**Responsibilities**:
-- Provide REST endpoints:
-  - `POST /api/results/submit`
-  - `POST /api/results/validate`
-  - `GET /api/workflows/{id}/results`
-- Validate request payloads against Pydantic models
-- Enforce authentication and basic authorization (validator-only for `/validate`)
-- Delegate to `ResultSubmissionService`
-
-**Key Interfaces**:
-
-```python
-class ResultSubmissionAPI:
-    def __init__(self, service: ResultSubmissionService, auth: AuthBackend):
-        self.service = service
-        self.auth = auth
-
-    async def submit_result(self, request: SubmitResultRequest, user_ctx: AgentContext) -> SubmitResultResponse:
-        self.auth.ensure_authenticated_agent(user_ctx)
-        return await self.service.submit_result(request, user_ctx)
-
-    async def validate_result(self, request: ValidateResultRequest, user_ctx: AgentContext) -> ValidateResultResponse:
-        self.auth.ensure_authenticated_agent(user_ctx)
-        self.auth.ensure_validator_role(user_ctx)  # validator-only
-        return await self.service.validate_result(request, user_ctx)
-
-    async def list_results(self, workflow_id: str, user_ctx: AgentContext) -> list[ResultSubmissionDTO]:
-        self.auth.ensure_authenticated_agent(user_ctx)
-        return await self.service.list_results(workflow_id)
-```
-
-### ResultSubmissionService
-
-**Responsibilities**:
-- Implement normative behavior from REQ-ERS-001..004 and configuration section
-- Create submission records in append-only fashion
-- Trigger automatic validation (REQ-ERS-002) via `ValidatorOrchestrator`
-- Apply post-validation actions via `WorkflowActionEngine`
-- Emit required events via Event Bus/WebSocket
-
-**Control Flow**:
-
-1. **Submit**:
-   - Validate `has_result` is enabled for workflow (from phase config)
-   - Persist new submission row with `status = "submitted"`, `version` assigned
-   - Emit `result_submitted` event
-   - Trigger asynchronous validation via `ValidatorOrchestrator`
-
-2. **Validate**:
-   - Ensure caller is validator agent
-   - Mark submission as validated with `passed`, `feedback`, `validated_at`
-   - Emit `result_validated` event
-   - Persist to Memory System via `MemoryIntegrationAdapter` (REQ-ERS-MEM-001)
-   - Compute and execute post-validation action per `on_result_found` config:
-     - If `passed` and `on_result_found="stop_all"` → request workflow termination
-     - If `passed` and `on_result_found="do_nothing"` → no orchestration change
-     - If `failed` → allow further submissions, no termination
-   - For PASS+`stop_all`, emit `workflow_termination_requested`
-
-### ValidatorOrchestrator
-
-**Responsibilities**:
-- On submission, spawn or signal a validator agent to evaluate `result_criteria`
-- Ensure validator's verdict is delivered via `/api/results/validate`
-- Reuse patterns from Validation System design (common validator lifecycle, evidence indexing)
-
-**Interfaces**:
-
-```python
-class ValidatorOrchestrator:
-    async def spawn_validator_for_submission(self, submission: ResultSubmission, criteria: str) -> str:
-        """Spawn validator agent or enqueue validation task; returns validator_id or job_id."""
-        ...
-
-    async def notify_validation_dispatched(self, submission_id: str, validator_id: str) -> None:
-        """Optional: track validator associated with this submission for audit."""
-        ...
-```
-
-**Note**: Actual mechanisms (task queue, agent type, Git integration) are defined by Validation System design; Result Submission subsystem only relies on that contract.
-
-### WorkflowActionEngine
-
-**Responsibilities**:
-- Implement REQ-ERS-003:
-  - PASS + `stop_all` → terminate active agents/tasks for the workflow and finalize
-  - PASS + `do_nothing` → record result, workflow continues
-  - FAIL → no workflow-level change
-- Call into Workflow Orchestrator via stable interface or event bus
-
-**Example Interface**:
-
-```python
-class WorkflowActionEngine:
-    async def apply_post_validation_action(
-        self,
-        submission: ResultSubmission,
-        passed: bool,
-        config: ResultSubmissionConfig,
-    ) -> None:
-        if not passed:
-            return
-
-        if config.on_result_found == "stop_all":
-            await self._request_workflow_termination(submission.workflow_id, submission.submission_id)
-        # do_nothing → no-op at orchestration level
-
-    async def _request_workflow_termination(self, workflow_id: str, submission_id: str) -> None:
-        # Either call orchestrator API or publish event
-        await self.orchestrator_client.request_termination(
-            workflow_id, reason="result_passed", submission_id=submission_id
-        )
-```
-
-### ResultRepository
-
-**Responsibilities**:
-- Provide append-only storage for submissions and associated validation metadata
-- Enforce immutability and versioning (REQ-ERS-004)
-- Support efficient listing of results per workflow
-
-**Key Operations**:
-
-```python
-class ResultRepository:
-    async def create_submission(self, model: ResultSubmission) -> ResultSubmission: ...
-    async def mark_validated(self, submission_id: str, passed: bool, feedback: str, evidence_index: dict) -> ResultSubmission: ...
-    async def get_submission(self, submission_id: str) -> ResultSubmission | None: ...
-    async def list_by_workflow(self, workflow_id: str) -> list[ResultSubmission]: ...
-```
-
-### MemoryIntegrationAdapter
-
-**Responsibilities (REQ-ERS-MEM-001/002)**:
-- On validation (pass or fail), create Memory System entries capturing:
-  - `workflow_id` and ticket/task identifiers
-  - link to result artifact (markdown file path or stored blob)
-  - validation outcome and feedback
-  - result_criteria snapshot used for the decision
-- Provide query helper to fetch prior results for a given workflow or component for use as agent context
-
-**Interfaces**:
-
-```python
-class MemoryIntegrationAdapter:
-    async def persist_validated_result(self, submission: ResultSubmission, criteria_snapshot: str) -> None:
-        # Calls Memory System API (e.g., REST or gRPC) to create memory entry
-        ...
-
-    async def get_prior_results_context(self, workflow_id: str) -> list[MemoryResultSummary]:
-        # Used by agents to avoid duplicate work
-        ...
-```
-
-### WebSocket/Event Gateway
-
-- Subscribe to domain events from `ResultSubmissionService`
-- Push WebSocket messages to connected UIs or agent clients
-
----
-
-## Data Models
-
-### Database Schemas
-
-**Result Submissions (Append-Only)**:
-
-```sql
-CREATE TABLE result_submissions (
-    submission_id UUID PRIMARY KEY,
-    workflow_id UUID NOT NULL,
-    agent_id UUID NOT NULL,
-    markdown_file_path TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- Validation metadata (set only once; append-only semantics)
-    validated_at TIMESTAMPTZ,
-    passed BOOLEAN,
-    feedback TEXT,
-    evidence_index JSONB DEFAULT '{}'::jsonb,
-
-    -- Versioning per workflow (incremental count of submissions)
-    version INTEGER NOT NULL,
-    result_criteria_snapshot TEXT NOT NULL,
-
-    -- Status: 'submitted' | 'validated'
-    status VARCHAR(32) NOT NULL DEFAULT 'submitted',
-
-    -- Audit
-    config_on_result_found VARCHAR(32) NOT NULL,
-    created_by_agent_type VARCHAR(64),
-
-    CONSTRAINT uq_workflow_version UNIQUE (workflow_id, version)
-);
-
-CREATE INDEX idx_result_submissions_workflow ON result_submissions(workflow_id);
-CREATE INDEX idx_result_submissions_status ON result_submissions(status);
-CREATE INDEX idx_result_submissions_passed ON result_submissions(passed) WHERE validated_at IS NOT NULL;
-```
-
-**Result Submission Audit Log (Optional but Recommended)**:
-
-```sql
-CREATE TABLE result_submission_audit_log (
-    id UUID PRIMARY KEY,
-    submission_id UUID NOT NULL REFERENCES result_submissions(submission_id),
-    event_type VARCHAR(64) NOT NULL, -- 'submitted' | 'validated' | 'termination_requested'
-    actor_id UUID,
-    actor_role VARCHAR(64),
-    payload JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_result_audit_submission ON result_submission_audit_log(submission_id);
-```
-
-**Immutability & Versioning**:
-- Treat `result_submissions` as append-only logically; updates are limited to filling in `validated_at`, `passed`, `feedback`, and `evidence_index` once. Application logic enforces "no second validation mutation".
-- `version` provides ordered history of submissions per workflow; each new submission increments version.
-
-### Pydantic Models (Reference)
-
-These extend the requirements' reference models with additional fields used internally:
-
-```python
-from __future__ import annotations
-from datetime import datetime
-from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field
-
-
-class ResultSubmission(BaseModel):
-    submission_id: str
-    workflow_id: str
-    agent_id: str
-    markdown_file_path: str
-    created_at: datetime
-    validated_at: Optional[datetime] = None
-    passed: Optional[bool] = None
-    feedback: Optional[str] = None
-    evidence_index: Dict[str, Any] = {}
-    version: int
-    status: str  # "submitted" | "validated"
-    result_criteria_snapshot: str
-    config_on_result_found: str  # "stop_all" | "do_nothing"
-
-
-class SubmitResultRequest(BaseModel):
-    workflow_id: str
-    markdown_file_path: str
-    agent_id: str
-
-
-class SubmitResultResponse(BaseModel):
-    submission_id: str
-    status: str = "submitted"
-
-
-class ValidateResultRequest(BaseModel):
-    submission_id: str
-    passed: bool
-    feedback: str
-    evidence_index: Dict[str, Any] = Field(default_factory=dict)
-
-
-class ValidateResultResponse(BaseModel):
-    submission_id: str
-    status: str  # "validated"
-    passed: bool
-
-
-class ResultSubmissionDTO(BaseModel):
-    submission_id: str
-    workflow_id: str
-    agent_id: str
-    created_at: datetime
-    validated_at: Optional[datetime]
-    passed: Optional[bool]
-    feedback: Optional[str]
-    version: int
-```
-
----
-
-## Result Artifact Format (Markdown File Structure)
-
-While requirements only mention a "markdown file path or payload reference", standardizing structure improves validator reliability.
-
-**Recommended Structure (Non-Normative but Strongly Encouraged)**:
-
-```markdown
-# Result Summary
-- Workflow ID: <workflow-id>
-- Ticket: <ticket-id> (optional)
-- Author Agent: <agent-id or alias>
-- Date: <ISO8601>
-
-## Problem Statement
-Short restatement of the original goal or ticket description.
-
-## Proposed Solution
-High-level explanation of the solution.
-
-## Implementation Details
-- Key changes
-- Dependencies
-- Rollout considerations
-
-## Evidence
-- Links to PRs / commits
-- Logs or screenshots
-- Metrics or benchmarks
-
-## Risks & Open Questions
-- Known limitations
-- Future work
-
-## Validation Notes (Agent)
-Optional notes by the submitting agent.
-```
-
-Validators can be instructed (via `result_criteria`) to inspect specific sections (e.g., ensure Evidence section includes at least N concrete references).
-
----
-
-## API Specifications
-
-### Endpoints Table (Normative)
-
-| Endpoint | Method | Purpose | Request Body (min) | Success (200) | Failures |
-|----------|--------|---------|---------------------|----------------|----------|
-| `/api/results/submit` | POST | Submit result | `{ "workflow_id","markdown_file_path","agent_id" }` | `{ "submission_id","status":"submitted" }` | 400 `{ "error","message" }`, 404 `{ "error","message" }` (workflow not found) |
-| `/api/results/validate` | POST | Validator-only validation | `{ "submission_id","passed","feedback" }` (+ evidence) | `{ "submission_id","status":"validated","passed":bool }` | 403 `{ "error","message" }` (non-validator), 404 (submission not found) |
-| `/api/workflows/{id}/results` | GET | List results for workflow | — | `[ { "submission_id","passed","version",... } ]` | 404 `{ "error","message" }` (workflow not found) |
-
-**Error Contract**:
-- All errors follow:
-```json
-{
-  "error": "STABLE_ERROR_CODE",
-  "message": "Human-readable description"
-}
-```
-- Examples: `"ERS_WORKFLOW_NOT_FOUND"`, `"ERS_SUBMISSION_NOT_FOUND"`, `"ERS_FORBIDDEN_VALIDATOR_ONLY"`
-
-### Request/Response Models
-
-- `POST /api/results/submit`: Request `SubmitResultRequest`, Response `SubmitResultResponse`
-- `POST /api/results/validate`: Request `ValidateResultRequest`, Response `ValidateResultResponse`
-- `GET /api/workflows/{id}/results`: Response `List[ResultSubmissionDTO]`
-
-### Authentication & Authorization
-
-- **Submit**: Authenticated agent required; must be associated with given `workflow_id` (enforced via orchestrator or task assignment)
-- **Validate**: Authenticated agent with *validator role* required (REQ-ERS-SEC-001); role determined from agent type, JWT claims, or registry
-- **List**: Authenticated access; further restrictions can be applied (e.g., only owners, validators, or admins)
-
----
-
-## Integration Points
-
-### Validation System Integration
-
-- Reuses validator agents and lifecycle defined in Validation System design
-- **Patterns Reused**:
-  - Validator spawning and tracking
-  - Feedback and evidence indexing (the `evidence_index` field is purposely generic JSON)
-  - SLO measurements: Validation decision P95 < `validator_timeout_minutes` (REQ-ERS-SLO-001)
-- **Contract-Level Behavior**:
-  - On submission, `ValidatorOrchestrator` creates a validation task referencing:
-    - `workflow_id`
-    - `submission_id`
-    - `markdown_file_path`
-    - `result_criteria`
-  - Validator agent consumes this task, reads artifact, and posts result via `/api/results/validate`
-
-### Workflow Orchestrator Integration
-
-- For PASS + `on_result_found="stop_all"`:
-  - `WorkflowActionEngine` either:
-    - Calls orchestrator API (e.g., `POST /api/workflows/{id}/terminate`), or
-    - Publishes event `workflow_termination_requested` to Event Bus, which orchestrator subscribes to
-- For PASS + `do_nothing`: No workflow termination is requested; orchestrator continues managing tasks and phases
-
-### Memory System Integration (REQ-ERS-MEM-001, REQ-ERS-MEM-002)
-
-**Persist Final Results**:
-- On validation (pass or fail), `MemoryIntegrationAdapter` calls Memory System to create a `ResultMemory` entry capturing:
-  - `workflow_id`, `ticket_id`, `task_id` (if available)
-  - `submission_id`, `version`
-  - `artifact_link` (file path or blob ID)
-  - `outcome` (`passed/failed`)
-  - `feedback`
-  - `result_criteria_snapshot`
-
-**Use Prior Results as Context**:
-- Agents or orchestrator can request prior result summaries from Memory System:
-  - e.g., `GET /memory/results?workflow_id=...`
-- Used to:
-  - Avoid duplicate work
-  - Align with previous conclusions
-  - Reuse successful methodologies and evidence patterns
-
-### WebSocket/Event Contracts
-
-As specified in requirements:
-
-| Event | When Emitted | Payload (min) |
-|-------|--------------|---------------|
-| `result_submitted` | On submission accepted | `{ "workflow_id","submission_id","agent_id" }` |
-| `result_validated` | On pass/fail decision | `{ "workflow_id","submission_id","passed","feedback" }` |
-| `workflow_termination_requested` | On PASS + `stop_all` | `{ "workflow_id","submission_id" }` |
-
-**Implementation Detail**: `ResultSubmissionService` publishes domain events; WebSocket gateway translates to WebSocket messages for UI clients.
-
----
-
-## Implementation Details
-
-### Submission → Validation → Action Workflow
-
-**Pseudocode**:
+`backend/omoi_os/services/result_submission.py:24-479`
 
 ```python
 class ResultSubmissionService:
-    async def submit_result(self, req: SubmitResultRequest, ctx: AgentContext) -> SubmitResultResponse:
-        config = await self._load_phase_config(req.workflow_id)
-        if not config.has_result:
-            raise BadRequest("ERS_HAS_RESULT_DISABLED")
-
-        version = await self.repo.next_version_for_workflow(req.workflow_id)
-
-        submission = ResultSubmission(
-            submission_id=str(uuid.uuid4()),
-            workflow_id=req.workflow_id,
-            agent_id=req.agent_id,
-            markdown_file_path=req.markdown_file_path,
-            created_at=datetime.utcnow(),
-            version=version,
-            status="submitted",
-            result_criteria_snapshot=config.result_criteria,
-            config_on_result_found=config.on_result_found,
-        )
-        await self.repo.create_submission(submission)
-
-        await self.events.publish("result_submitted", {
-            "workflow_id": submission.workflow_id,
-            "submission_id": submission.submission_id,
-            "agent_id": submission.agent_id,
-        })
-
-        validator_id = await self.validator_orchestrator.spawn_validator_for_submission(
-            submission, config.result_criteria
-        )
-        await self.validator_orchestrator.notify_validation_dispatched(
-            submission.submission_id, validator_id
-        )
-
-        return SubmitResultResponse(submission_id=submission.submission_id, status="submitted")
-
-    async def validate_result(self, req: ValidateResultRequest, ctx: AgentContext) -> ValidateResultResponse:
-        submission = await self.repo.get_submission(req.submission_id)
-        if not submission:
-            raise NotFound("ERS_SUBMISSION_NOT_FOUND")
-
-        if submission.validated_at is not None:
-            # Optionally prevent double validation
-            raise BadRequest("ERS_ALREADY_VALIDATED")
-
-        submission = await self.repo.mark_validated(
-            submission_id=req.submission_id,
-            passed=req.passed,
-            feedback=req.feedback,
-            evidence_index=req.evidence_index,
-        )
-
-        await self.events.publish("result_validated", {
-            "workflow_id": submission.workflow_id,
-            "submission_id": submission.submission_id,
-            "passed": submission.passed,
-            "feedback": submission.feedback,
-        })
-
-        await self.memory_adapter.persist_validated_result(
-            submission, submission.result_criteria_snapshot
-        )
-
-        await self.workflow_actions.apply_post_validation_action(
-            submission,
-            passed=submission.passed,
-            config=ResultSubmissionConfig(
-                has_result=True,
-                result_criteria=submission.result_criteria_snapshot,
-                on_result_found=submission.config_on_result_found,
-            )
-        )
-
-        return ValidateResultResponse(
-            submission_id=submission.submission_id,
-            status="validated",
-            passed=submission.passed,
-        )
+    """Service for submitting and validating task-level and workflow-level results."""
+    
+    def __init__(
+        self,
+        db: DatabaseService,
+        event_bus: Optional[EventBusService] = None,
+        phase_loader: Optional[PhaseLoader] = None,
+        billing_service: Optional["BillingService"] = None,
+    ):
+        self.db = db
+        self.event_bus = event_bus
+        self.phase_loader = phase_loader or PhaseLoader()
+        self.billing_service = billing_service
 ```
 
-### Configuration Handling
+**Task-Level Methods:**
 
-From requirements:
+| Method | Line | Purpose |
+|--------|------|---------|
+| `report_task_result` | 56-130 | Submit task-level AgentResult |
+| `verify_task_result` | 132-175 | Mark task result as verified/disputed |
+| `get_task_results` | 177-197 | Retrieve all results for a task |
 
-```yaml
-has_result: true
-result_criteria: |
-  Detailed validation criteria...
-on_result_found: stop_all  # or "do_nothing"
+**Workflow-Level Methods:**
+
+| Method | Line | Purpose |
+|--------|------|---------|
+| `submit_workflow_result` | 203-259 | Submit workflow-level result |
+| `validate_workflow_result` | 261-355 | Validate workflow result (pass/fail) |
+| `list_workflow_results` | 357-377 | List all results for a workflow |
+
+## Task-Level Results
+
+### AgentResult Submission
+
+`backend/omoi_os/services/result_submission.py:56-130`
+
+```mermaid
+sequenceDiagram
+    participant Agent
+    participant RSS as ResultSubmissionService
+    participant DB as Database
+    participant EB as EventBus
+    
+    Agent->>RSS: report_task_result(agent_id, task_id, markdown_path, ...)
+    
+    RSS->>RSS: Verify agent owns task
+    alt Sandbox mode
+        RSS->>RSS: Trust agent_id from sandbox
+    else Legacy mode
+        RSS->>DB: Check task.assigned_agent_id
+    end
+    
+    RSS->>RSS: read_markdown_file(markdown_path)
+    
+    RSS->>DB: Create AgentResult record
+    Note over RSS,DB: markdown_content, result_type, summary, verification_status="unverified"
+    
+    RSS->>EB: Publish result.task.submitted event
+    
+    RSS-->>Agent: Return AgentResult
 ```
-
-**Configuration Model**:
 
 ```python
-class ResultSubmissionConfig(BaseModel):
-    has_result: bool = False
-    result_criteria: str = ""
-    on_result_found: str = "stop_all"  # "stop_all" | "do_nothing"
+def report_task_result(
+    self,
+    agent_id: str,
+    task_id: str,
+    markdown_file_path: str,
+    result_type: str,
+    summary: str,
+) -> AgentResult:
+    """Submit task-level result."""
+    
+    # Verify agent owns task
+    with self.db.get_session() as session:
+        task = session.get(Task, task_id)
+        
+        # Sandbox tasks use sandbox_id, not assigned_agent_id
+        if task.sandbox_id:
+            pass  # Trust sandbox worker's agent_id
+        elif task.assigned_agent_id != agent_id:
+            raise ValueError(f"Task not assigned to agent {agent_id}")
+    
+    # Validate and read file
+    markdown_content = read_markdown_file(markdown_file_path)
+    
+    # Create result record
+    result = AgentResult(
+        agent_id=agent_id,
+        task_id=task_id,
+        markdown_content=markdown_content,
+        markdown_file_path=markdown_file_path,
+        result_type=result_type,
+        summary=summary,
+        verification_status="unverified",
+    )
 ```
 
-**Config Resolution**:
-- Read from per-phase or per-workflow YAML (`phases_config.yaml`)
-- Loaded by Workflow Orchestrator and exposed via config service or environment to `ResultSubmissionService`
+### Task Result Verification
 
-### Performance Considerations
+`backend/omoi_os/services/result_submission.py:132-175`
 
-- **Submission ingestion P95 < 200ms** (REQ-ERS-SLO-001):
-  - Keep submission path lightweight: single DB write + event publish + async validation scheduling
-- **Validation decision P95 < validator_timeout_minutes**:
-  - Leverage existing Validation System SLOs
-  - Use queues and timeouts configured for validator agents
-- **Termination orchestration P95 < 2s**:
-  - `WorkflowActionEngine` should issue termination requests asynchronously and rely on orchestrator's optimized path
+```python
+def verify_task_result(
+    self,
+    result_id: str,
+    validation_review_id: str,
+    verified: bool,
+) -> Optional[AgentResult]:
+    """Mark task result as verified or disputed."""
+    
+    with self.db.get_session() as session:
+        result = session.get(AgentResult, result_id)
+        
+        result.verification_status = "verified" if verified else "disputed"
+        result.verified_at = utc_now()
+        result.verified_by_validation_id = validation_review_id
+        
+        session.commit()
+        
+        # Publish verification event
+        self.event_bus.publish(SystemEvent(
+            event_type=f"result.task.{'verified' if verified else 'disputed'}",
+            entity_type="agent_result",
+            entity_id=result.id,
+            payload={
+                "task_id": result.task_id,
+                "verification_status": result.verification_status,
+            },
+        ))
+```
 
-**Database Indexing**:
-- Indexes on `workflow_id`, `status`, and `passed` support fast listing and reporting
+## Workflow-Level Results
 
-### Error Handling Strategy
+### Workflow Result Submission
 
-- Stable error codes for each class of error (e.g., `ERS_WORKFLOW_NOT_FOUND`, `ERS_FORBIDDEN_VALIDATOR_ONLY`)
-- Append-only audit log entries for every:
-  - Submission
-  - Validation
-  - Termination request
-- All security-sensitive actions logged with `actor_id` and `actor_role`
+`backend/omoi_os/services/result_submission.py:203-259`
 
----
+```mermaid
+sequenceDiagram
+    participant Agent
+    participant RSS as ResultSubmissionService
+    participant DB as Database
+    participant EB as EventBus
+    
+    Agent->>RSS: submit_workflow_result(workflow_id, agent_id, markdown_path, ...)
+    
+    RSS->>RSS: read_markdown_file(markdown_path)
+    
+    RSS->>DB: Create WorkflowResult record
+    Note over RSS,DB: status="pending_validation"
+    
+    RSS->>EB: Publish result.workflow.submitted event
+    
+    RSS-->>Agent: Return WorkflowResult
+```
+
+```python
+def submit_workflow_result(
+    self,
+    workflow_id: str,
+    agent_id: str,
+    markdown_file_path: str,
+    explanation: Optional[str] = None,
+    evidence: Optional[List[str]] = None,
+) -> WorkflowResult:
+    """Submit workflow-level result."""
+    
+    # Validate file
+    read_markdown_file(markdown_file_path)
+    
+    # Create result record
+    result = WorkflowResult(
+        workflow_id=workflow_id,
+        agent_id=agent_id,
+        markdown_file_path=markdown_file_path,
+        explanation=explanation,
+        evidence={"items": evidence} if evidence else None,
+        status="pending_validation",
+    )
+    
+    session.add(result)
+    session.commit()
+    
+    # Publish event
+    self.event_bus.publish(SystemEvent(
+        event_type="result.workflow.submitted",
+        entity_type="workflow_result",
+        entity_id=result.id,
+        payload={
+            "workflow_id": workflow_id,
+            "agent_id": agent_id,
+        },
+    ))
+```
+
+### Workflow Result Validation
+
+`backend/omoi_os/services/result_submission.py:261-355`
+
+```mermaid
+sequenceDiagram
+    participant Validator
+    participant RSS as ResultSubmissionService
+    participant DB as Database
+    participant EB as EventBus
+    participant BS as BillingService
+    
+    Validator->>RSS: validate_workflow_result(result_id, passed, feedback, ...)
+    
+    RSS->>DB: Get WorkflowResult
+    
+    alt Validation passed
+        RSS->>DB: status="validated"
+        RSS->>BS: _record_billing_usage(workflow_id)
+        BS-->>RSS: billing_recorded
+        
+        RSS->>RSS: _load_workflow_config()
+        
+        alt on_result_found == "stop_all"
+            RSS->>EB: Publish workflow.termination.requested
+        end
+    else Validation failed
+        RSS->>DB: status="rejected"
+    end
+    
+    RSS->>DB: Update validated_at, validation_feedback
+    RSS->>EB: Publish result.workflow.validated
+    
+    RSS-->>Validator: Return validation result
+```
+
+```python
+def validate_workflow_result(
+    self,
+    result_id: str,
+    passed: bool,
+    feedback: str,
+    evidence: List[dict],
+    validator_agent_id: str,
+) -> dict:
+    """Validate workflow result (validator agents only)."""
+    
+    with self.db.get_session() as session:
+        result = session.get(WorkflowResult, result_id)
+        
+        # Update validation status
+        result.status = "validated" if passed else "rejected"
+        result.validated_at = utc_now()
+        result.validation_feedback = feedback
+        
+        session.commit()
+        
+        # Publish validation event
+        self.event_bus.publish(SystemEvent(
+            event_type="result.workflow.validated",
+            entity_type="workflow_result",
+            entity_id=result.id,
+            payload={
+                "workflow_id": workflow_id,
+                "passed": passed,
+                "validator_agent_id": validator_agent_id,
+            },
+        ))
+        
+        # Determine action
+        action_taken = "none"
+        billing_recorded = False
+        
+        if passed:
+            # Record billing
+            billing_recorded = self._record_billing_usage(workflow_id)
+            
+            # Check workflow config for on_result_found
+            config = self._load_workflow_config(workflow_id)
+            on_result_found = config.get("on_result_found", "stop_all")
+            
+            if on_result_found == "stop_all":
+                # Trigger workflow termination
+                self.event_bus.publish(SystemEvent(
+                    event_type="workflow.termination.requested",
+                    entity_type="ticket",
+                    entity_id=workflow_id,
+                    payload={
+                        "result_id": result_id,
+                        "reason": "validated_result_found",
+                    },
+                ))
+                action_taken = "workflow_terminated"
+```
+
+## Billing Integration
+
+### Usage Recording
+
+`backend/omoi_os/services/result_submission.py:409-479`
+
+```python
+def _record_billing_usage(self, workflow_id: str) -> bool:
+    """Record workflow completion for billing."""
+    
+    if not self.billing_service:
+        return False
+    
+    with self.db.get_session() as session:
+        ticket = session.get(Ticket, workflow_id)
+        project = session.get(Project, ticket.project_id)
+        organization_id = project.organization_id
+        
+        usage_details = {
+            "workflow_id": str(workflow_id),
+            "ticket_title": ticket.title or "Untitled workflow",
+        }
+        
+        usage_record = self.billing_service.record_workflow_usage(
+            organization_id=organization_id,
+            ticket_id=workflow_id,
+            usage_details=usage_details,
+        )
+        
+        if usage_record:
+            logger.info(
+                f"Recorded billing usage for workflow {workflow_id}, "
+                f"org {organization_id}, charged: ${usage_record.amount:.2f}"
+            )
+            return True
+```
+
+## Data Models
+
+### AgentResult
+
+`backend/omoi_os/models/agent_result.py`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `agent_id` | UUID | Submitting agent |
+| `task_id` | UUID | Related task |
+| `markdown_content` | Text | Result documentation |
+| `markdown_file_path` | String | Path to result file |
+| `result_type` | String | Type of result (implementation, analysis, etc.) |
+| `summary` | String | Brief summary |
+| `verification_status` | String | unverified, verified, disputed |
+| `verified_at` | datetime | When verified |
+| `verified_by_validation_id` | UUID | Validator reference |
+
+### WorkflowResult
+
+`backend/omoi_os/models/workflow_result.py`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key |
+| `workflow_id` | UUID | Related ticket/workflow |
+| `agent_id` | UUID | Submitting agent |
+| `markdown_file_path` | String | Path to result file |
+| `explanation` | Text | What was accomplished |
+| `evidence` | JSONB | List of evidence items |
+| `status` | String | pending_validation, validated, rejected |
+| `validated_at` | datetime | When validated |
+| `validation_feedback` | Text | Validator feedback |
+
+## Event Bus Integration
+
+### Published Events
+
+| Event | Trigger | Payload |
+|-------|---------|---------|
+| `result.task.submitted` | report_task_result | agent_id, task_id, result_type |
+| `result.task.verified` | verify_task_result (passed) | task_id, verification_status |
+| `result.task.disputed` | verify_task_result (failed) | task_id, verification_status |
+| `result.workflow.submitted` | submit_workflow_result | workflow_id, agent_id |
+| `result.workflow.validated` | validate_workflow_result | workflow_id, passed, validator_agent_id |
+| `workflow.termination.requested` | validate_workflow_result (passed + stop_all) | result_id, reason |
+
+## Workflow Configuration
+
+### on_result_found Behavior
+
+`backend/omoi_os/services/result_submission.py:383-407`
+
+```python
+def _load_workflow_config(self, workflow_id: str) -> dict:
+    """Load workflow configuration from YAML."""
+    
+    try:
+        config = self.phase_loader.load_workflow_config("software_development.yaml")
+        return {
+            "has_result": config.has_result,
+            "result_criteria": config.result_criteria,
+            "on_result_found": config.on_result_found,  # "stop_all" or "do_nothing"
+        }
+    except Exception:
+        # Fallback to safe defaults
+        return {
+            "has_result": False,
+            "result_criteria": "",
+            "on_result_found": "do_nothing",
+        }
+```
+
+| on_result_found | Behavior |
+|-----------------|----------|
+| `stop_all` | Trigger workflow termination on validation |
+| `do_nothing` | Log result only, continue execution |
+
+## Validation Helpers
+
+### Markdown File Reading
+
+`backend/omoi_os/services/validation_helpers.py`
+
+```python
+def read_markdown_file(file_path: str) -> str:
+    """Read and validate a markdown file.
+    
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If file is empty or not markdown
+    """
+    path = Path(file_path)
+    
+    if not path.exists():
+        raise FileNotFoundError(f"Markdown file not found: {file_path}")
+    
+    if not path.suffix.lower() in ['.md', '.markdown']:
+        raise ValueError(f"File must be markdown: {file_path}")
+    
+    content = path.read_text(encoding='utf-8')
+    
+    if not content.strip():
+        raise ValueError(f"Markdown file is empty: {file_path}")
+    
+    return content
+```
+
+## Integration Points
+
+### Service Dependencies
+
+```mermaid
+graph LR
+    RSS[ResultSubmissionService] --> DB[(Database)]
+    RSS --> EB[EventBus]
+    RSS --> PL[PhaseLoader]
+    RSS --> BS[BillingService]
+```
+
+### Agent Output Collector Integration
+
+The AgentOutputCollector works with results to:
+
+1. **Extract error context** from failed task results
+2. **Monitor result submission** via event bus
+3. **Correlate results** with agent activity
+
+## Error Handling
+
+### Common Error Scenarios
+
+| Scenario | Error Type | Handling |
+|----------|------------|----------|
+| Task not found | ValueError | Raise to caller |
+| Agent doesn't own task | ValueError | Raise to caller |
+| Markdown file not found | FileNotFoundError | Raise to caller |
+| Empty markdown file | ValueError | Raise to caller |
+| Workflow result not found | ValueError | Raise to caller |
+| Billing service error | Exception | Log error, don't fail validation |
+
+## Testing Considerations
+
+### Unit Test Areas
+
+1. **Task result submission** - Verify ownership checks
+2. **Workflow result submission** - Verify file validation
+3. **Validation** - Test pass/fail paths
+4. **Billing integration** - Test usage recording
+5. **Event publishing** - Verify event payloads
+
+### Integration Test Areas
+
+1. **End-to-end submission** - Submit → Validate → Complete
+2. **Billing flow** - Validate passed → Record usage
+3. **Termination flow** - Validate passed → Terminate workflow
+4. **Event chain** - Verify all events published
 
 ## Related Documents
 
-- **Requirements (Source of Truth)**:
-  - [`docs/requirements/workflows/result_submission.md`](../requirements/workflows/result_submission.md)
-- **Related Design Documents**:
-  - [`docs/design/multi_agent_orchestration.md`](multi_agent_orchestration.md) (overall orchestration patterns)
-  - [`docs/design/validation_system.md`](validation_system.md) (validator reuse patterns, state machine)
-  - [`docs/design/task_queue_management.md`](task_queue_management.md) (if validation tasks are queued)
-  - [`docs/design/ticket_workflow.md`](ticket_workflow.md) (result submissions as phase gates)
-  - [`docs/design/monitoring_architecture.md`](monitoring_architecture.md) and [`docs/design/fault_tolerance.md`](fault_tolerance.md) (SLO monitoring, termination observability)
-- **Memory System**:
-  - [`docs/design/memory_system.md`](memory_system.md) (for Memory System data model and APIs)
-
----
-
-## Document Revision History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-01-27 | AI Design Agent | Initial design document from requirements |
-
----
-
-**Related Document**: [Requirements Document](../requirements/workflows/result_submission.md)
-
+- Agent Output Collector - Monitors result-related activity
+- [Task Queue Service](./task_queue.md) - Manages tasks that produce results
+- [Diagnostic Service](./diagnostic_service.md) - Analyzes failed results
+- Billing Service - Records workflow completion
+- [Architecture Overview](../../../ARCHITECTURE.md) - System-wide context

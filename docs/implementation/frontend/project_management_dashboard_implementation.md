@@ -5,8 +5,8 @@
 **Purpose**: Code examples, database models, service implementations, and technical details
 
 **Related Documents:**
-- [Main Design Document](./project_management_dashboard.md) - UI/UX design and user flows
-- [API Specifications](./project_management_dashboard_api.md) - Complete API endpoint specifications
+- [Main Design Document](../../design/frontend/project_management_dashboard.md) - UI/UX design and user flows
+- API Specifications - Complete API endpoint specifications
 
 ---
 
@@ -25,7 +25,7 @@
 
 ## 1. Frontend Component Structure
 
-See [Main Design Document - Frontend Architecture](./project_management_dashboard.md#1-frontend-architecture) for complete component structure.
+See [Main Design Document - Frontend Architecture](../../design/frontend/project_management_dashboard.md) for complete component structure.
 
 ```
 frontend/
@@ -779,7 +779,7 @@ def determine_storage_location(content: str, config: Dict) -> str:
 
 **Existing Service** (`omoi_os/services/dependency_graph.py`):
 
-See [Main Design Document - Dependency Graph Implementation](./project_management_dashboard.md#4-dependency-graph-implementation) for API details.
+See [Main Design Document - Dependency Graph Implementation](../../design/frontend/project_management_dashboard.md) for API details.
 
 ### 4.4 Discovery Service
 
@@ -792,7 +792,7 @@ See [Main Design Document - Dependency Graph Implementation](./project_managemen
 - ✅ `get_workflow_graph()` - Build workflow graph showing all discoveries and branches
 - ✅ `mark_discovery_resolved()` - Mark discovery as resolved
 
-See [API Specifications - Discovery API](./project_management_dashboard_api.md#10-discovery-api) for endpoint details.
+See API Specifications - Discovery API for endpoint details.
 
 ---
 
@@ -1025,5 +1025,5 @@ class DocumentStorageSettings(BaseSettings):
 
 ## Next Steps
 
-See [Main Design Document - Next Steps](./project_management_dashboard.md#20-next-steps) for implementation priorities.
+See [Main Design Document - Next Steps](../../design/frontend/project_management_dashboard.md) for implementation priorities.
 

@@ -1,10 +1,10 @@
 # Part 16: Service Catalog
 
-> Complete catalog of all backend services (~94 service classes across 100 files).
+> Complete catalog of all backend services (119 service classes across 119 files).
 
 ## Overview
 
-This is the authoritative reference for all services in `backend/omoi_os/services/`.
+This is the comprehensive catalog of all 119 services in `backend/omoi_os/services/`.
 
 ## Core (1)
 
@@ -12,13 +12,15 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | :--- | :--- | :--- |
 | database.py | DatabaseService | Manages database connections and provides session context manager |
 
-## Auth (3)
+## Auth (5)
 
 | File | Class | Description |
 | :--- | :--- | :--- |
 | oauth_service.py | OAuthService | OAuth authentication flows |
 | authorization_service.py | AuthorizationService | RBAC and permission checking |
 | credentials.py | CredentialsService | User credentials for managing external API keys |
+| auth_service.py | AuthService | Authentication service for user management and token generation |
+| token_blacklist.py | TokenBlacklistService | Redis-based token blacklist for JWT invalidation |
 
 ## Billing (4)
 
@@ -62,7 +64,7 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | discovery.py | DiscoveryService | Adaptive workflow branching |
 | discovery_analyzer.py | DiscoveryAnalyzer | LLM-powered discovery pattern analysis |
 
-## MCP Integration (5)
+## MCP Integration (6)
 
 | File | Class | Description |
 | :--- | :--- | :--- |
@@ -71,6 +73,7 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | mcp_retry.py | MCPRetryManager | Exponential backoff retry with idempotency |
 | mcp_circuit_breaker.py | MCPCircuitBreaker | Per-server+tool circuit breaker |
 | mcp_client.py | MCPClientService | Remote MCP tool invocation client |
+| mcp_registry.py | MCPRegistryService | MCP tool registry for server discovery and tool registration |
 
 ## Git & GitHub (3)
 
@@ -89,7 +92,7 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | dependency_graph.py | DependencyGraphService | DAG visualization and critical path |
 | pattern_loader.py | PatternLoader | YAML coordination pattern config |
 
-## Phase Management (4)
+## Phase Management (5)
 
 | File | Class | Description |
 | :--- | :--- | :--- |
@@ -97,6 +100,7 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | phase_gate.py | PhaseGateService | Phase gate validation |
 | phase_progression_service.py | PhaseProgressionService | Automatic ticket advancement |
 | phase_loader.py | PhaseLoader | YAML phase configuration |
+| fixture_phase_runner.py | FixturePhaseRunner | Runs spec phases using pre-recorded reference outputs |
 
 ## Task Management (7)
 
@@ -110,7 +114,7 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | task_scorer.py | TaskScorer | Dynamic task prioritization |
 | spec_task_execution.py | SpecTaskExecutionService | SpecTask sandbox execution |
 
-## Validation & Quality (5)
+## Validation & Quality (6)
 
 | File | Class | Description |
 | :--- | :--- | :--- |
@@ -119,6 +123,7 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | spec_acceptance_validator.py | SpecAcceptanceValidator | Acceptance criteria validation |
 | quality_checker.py | QualityCheckerService | Code quality metrics |
 | quality_predictor.py | QualityPredictorService | Memory-based quality prediction |
+| validation_helpers.py | Module | File validation helpers for result submission |
 
 ## Events & Messaging (3)
 
@@ -128,13 +133,17 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | reasoning_listener.py | ReasoningListener | Event-to-reasoning chain |
 | message_queue.py | RedisMessageQueue | Redis message queue for sandboxes |
 
-## LLM & AI (3)
+## LLM & AI (7)
 
 | File | Class | Description |
 | :--- | :--- | :--- |
 | llm_service.py | LLMService | LLM completion and structured output |
 | pydantic_ai_service.py | PydanticAIService | PydanticAI/Fireworks.ai backend |
 | embedding.py | EmbeddingService | Text embeddings for similarity search |
+| llm_factory.py | create_llm_service | Factory for creating LLM services based on mode config |
+| null_llm_service.py | NullLLMService | Returns placeholder responses without making API calls |
+| recording_llm_service.py | RecordingLLMService | Records LLM calls to disk for later replay |
+| replay_llm_service.py | ReplayLLMService | Replays cached responses from disk recordings |
 
 ## Workspace (3)
 
@@ -175,7 +184,7 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | context_service.py | ContextService | Cross-phase context aggregation |
 | context_summarizer.py | ContextSummarizer | PydanticAI context summarization |
 
-## Other (10)
+## Other (14)
 
 | File | Class | Description |
 | :--- | :--- | :--- |
@@ -189,6 +198,42 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 | resource_lock.py | ResourceLockService | Distributed resource locking |
 | ownership_validation.py | OwnershipValidationService | File ownership conflict prevention |
 | synthesis_service.py | SynthesisService | Result synthesis at sync points |
+| preview_manager.py | PreviewManager | Manages preview session lifecycle and event publishing |
+| stripe_service.py | StripeService | Stripe integration service for payment processing |
+| claude_agent_worker.py | Module | Claude Agent SDK worker for sandbox execution |
+| session_agent_config_restorer.py | SessionAgentConfigRestorer | Restores agent configuration from checkpoints |
+## Git Providers (4)
+
+| File | Class | Description |
+| :--- | :--- | :--- |
+| git_provider.py | GitProvider | Protocol for Git hosting operations |
+| local_git_provider.py | LocalGitProvider | GitProvider using local bare Git repositories |
+| git_factory.py | create_git_provider | Factory for creating GitProvider based on config |
+| github_provider.py | GitHubProvider | GitProvider backed by GitHub API |
+
+## Sandbox Providers (4)
+
+| File | Class | Description |
+| :--- | :--- | :--- |
+| sandbox_provider.py | SandboxProvider | Protocol for sandbox lifecycle management |
+| daytona_provider.py | DaytonaProvider | SandboxProvider backed by Daytona Cloud |
+| local_docker_provider.py | LocalDockerProvider | SandboxProvider using local Docker containers |
+| sandbox_factory.py | create_sandbox_provider | Factory for creating SandboxProvider based on config |
+
+## Branch Management (3)
+
+| File | Class | Description |
+| :--- | :--- | :--- |
+| branch_preview.py | BranchPreview | Branch strategy preview dataclasses |
+| branch_strategy_preview.py | BranchStrategyPreviewService | Preview branch strategy without hitting GitHub/Daytona |
+| branch_workflow.py | BranchWorkflowService | Branch workflow service for ticket-based development |
+
+## Agent Health (2)
+
+| File | Class | Description |
+| :--- | :--- | :--- |
+| agent_health.py | AgentHealthService | Service for monitoring agent health and managing heartbeats |
+| monitoring_replay.py | MonitoringReplayService | Feeds recorded agent sessions to Guardian/Conductor for testing |
 
 ## ACE Workflow (4)
 
@@ -204,3 +249,29 @@ This is the authoritative reference for all services in `backend/omoi_os/service
 - API server (`api/main.py`): ~27 services initialized at startup
 - Orchestrator worker (`workers/orchestrator_worker.py`): ~8 services initialized
 - Some services are initialized per-request (noted in `14-integration-gaps.md`)
+
+
+## Related Documentation
+
+### Architecture Deep-Dives
+- [Part 1: Planning System](01-planning-system.md) — Spec services
+- [Part 2: Execution System](02-execution-system.md) — Execution services
+- [Part 3: Discovery System](03-discovery-system.md) — Discovery services
+- [Part 4: Readjustment System](04-readjustment-system.md) — Monitoring services
+- [Part 7: Auth & Security](07-auth-and-security.md) — Auth services
+- [Part 8: Billing & Subscriptions](08-billing-and-subscriptions.md) — Billing services
+- [Part 9: MCP Integration](09-mcp-integration.md) — MCP services
+- [Part 11: Database Schema](11-database-schema.md) — Data services
+- [Part 12: Configuration System](12-configuration-system.md) — Config services
+- [Part 13: API Route Catalog](13-api-route-catalog.md) — API services
+- [Part 14: Integration Gaps](14-integration-gaps.md) — Service integration
+- [Part 15: LLM Service](15-llm-service.md) — LLM services
+
+### Design Docs
+- [Monitoring Architecture](../requirements/monitoring/monitoring_architecture.md) — Monitoring services
+- [Task Queue](../design/services/task_queue.md) — Task services
+- [LLM Service Guide](../design/services/llm_service_guide.md) — LLM services
+
+### Requirements
+- [Monitoring](../requirements/monitoring/monitoring_architecture.md) — Monitoring requirements
+- [Task Queue](../requirements/workflows/task_queue.md) — Task requirements

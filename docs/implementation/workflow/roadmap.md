@@ -5,9 +5,9 @@
 **Created**: 2025-11-16  
 **Status**: Active Planning  
 **Related Documents**:
-- [Foundation & Smallest Runnable](./foundation_and_smallest_runnable.md)
-- [OpenHands Insights & Prioritization](./openhands_insights_and_prioritization.md)
-- [Implementation Questions](./implementation_questions.md)
+- **Foundation & Smallest Runnable**
+- **OpenHands Insights & Prioritization**
+- Implementation Questions
 
 ---
 

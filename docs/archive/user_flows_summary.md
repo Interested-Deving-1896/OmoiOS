@@ -522,10 +522,10 @@ The sidebar content changes based on the current route:
 
 ## Related Documents
 
-- [User Journey](./user_journey.md) - Complete user journey with all flows
-- [Page Flow](./page_flow.md) - Detailed page-by-page navigation
-- [Frontend Design](./design/frontend/project_management_dashboard.md) - UI/UX specifications
-- [Product Vision](./product_vision.md) - Product concept
+- `./user_journey.md` - Complete user journey with all flows
+- `./page_flow.md` - Detailed page-by-page navigation
+- `./design/frontend/project_management_dashboard.md` - UI/UX specifications
+- `./product_vision.md` - Product concept
 
 ---
 

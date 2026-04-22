@@ -190,8 +190,8 @@ Auth Flow (public layout):
 46. **Pattern Learning**: Memory → Patterns → View learned patterns → Provide feedback → Extract new patterns
 47. **Sandbox Monitoring**: Command Center → Submit Task → Auto-redirect to /sandbox/:id → Watch real-time events → Send messages → View preview
 48. **Sandbox Management**: Sandboxes → Filter by status → Click sandbox → Monitor execution → Mark failed
-49. **Billing Dashboard**: Organization → Billing → View subscription/credits/payment methods/invoices/usage
-50. **Subscription Upgrade**: Billing → Subscription Tab → Upgrade → Select Tier → Stripe Checkout → Billing Success
+49. **Prototype Workspace**: /prototype → Select framework → Start session → Type prompt → See live preview → Export to Git
+50. **Billing Dashboard**: Organization → Billing → View subscription/credits/payment methods/invoices/usage
 51. **Credit Purchase**: Billing → Credits Tab → Enter Amount → Buy Credits → Stripe Checkout → /billing/success
 52. **Appearance Settings**: Settings → Appearance → Configure theme/colors/typography/layout → Save
 53. **Notification Settings**: Settings → Notifications → Toggle channels per event type → Set digest frequency → Configure quiet hours

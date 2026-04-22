@@ -444,7 +444,7 @@ The OmoiOS Team
 
 ## Related Documentation
 
-- [Pricing Strategy](../design/billing/pricing_strategy.md) - Tier definitions and pricing
+- Pricing Strategy - Tier definitions and pricing
 - [Page Flows - Authentication](../page_flows/01_authentication.md) - OAuth flow details
 - [Billing Page](../page_flows/11_cost_management.md) - Post-onboarding billing UI
 

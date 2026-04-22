@@ -311,7 +311,7 @@ OmoiOS v2.0 introduces a completely redesigned agent orchestration system. Agent
 - **Self-healing workflows** - Failed tasks are automatically retried with context
 
 <Callout type="info">
-  Learn more about agent orchestration in our [detailed guide](/docs/guides/agent-workflows).
+  Learn more about agent orchestration in the [Architecture Overview](../architecture/02-execution-system.md).
 </Callout>
 
 ### Improved Phase Gates
@@ -333,7 +333,7 @@ The spec workflow has been streamlined with new exploration and requirements pha
 
 ## Migration Guide
 
-Upgrading from v1.x? Check our [migration guide](/docs/guides/migration-v2) for step-by-step instructions.
+Upgrading from v1.x? See [CONTRIBUTING.md](../../CONTRIBUTING.md) for the latest setup instructions.
 
 ## What's Next
 

@@ -1,3 +1,5 @@
+# Bot Discovery Questions
+
 ## Bot Discovery Questions Aligned with DeepWiki
 
 This question set draws directly from the DeepWiki structure for [OpenHands/software-agent-sdk](https://deepwiki.com/OpenHands/software-agent-sdk). Each question references the relevant section so we can keep requirements and design decisions grounded in the existing documentation.

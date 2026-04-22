@@ -12,7 +12,7 @@
 
 Defines the capabilities, data contracts, and operation flow for the Diagnosis Agent, which investigates failing tasks, anomalies, or blocked tickets; gathers evidence; proposes hypotheses and remediations; and can open follow-up tasks or recommendations.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -176,10 +176,10 @@ class DiagnosisReport(BaseModel):
 
 ## Related Documents
 
-- [Task Queue Management Requirements](./task_queue_management.md)
+- **Task Queue Management Requirements**
 - [Validation System Requirements](./validation_system.md)
 - [Monitoring & Fault Tolerance Requirements](../monitoring/fault_tolerance.md)
-- [Enhanced Result Submission Requirements](./result_submission.md)
+- [Enhanced Result Submission Requirements](../workflows/result_submission.md)
 
 ---
 

@@ -418,6 +418,6 @@ Implementing these enhancements would make OmoiOS's memory system even more powe
 
 ## Related Documents
 
-- [Product Vision](./product_vision.md) - OmoiOS product vision
-- [Memory Service Implementation](../omoi_os/services/memory.py) - Current memory service code
-- [Task Memory Model](../omoi_os/models/task_memory.py) - Memory database schema
+- `./product_vision.md` - OmoiOS product vision
+- `../omoi_os/services/memory.py` - Current memory service code
+- `../omoi_os/models/task_memory.py` - Memory database schema

@@ -12,7 +12,7 @@
 
 Defines the workflow-level “result found” submission feature: agents submit a definitive solution, the system validates it via validator agents, and performs configured post-validation actions (stop workflow or continue). Includes configuration, API, events, and Pydantic models.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -166,8 +166,8 @@ class ValidateResultRequest(BaseModel):
 
 ## Related Documents
 
-- [Validation System Requirements](./validation_system.md)
-- [Task Queue Management Requirements](./task_queue_management.md)
+- [Validation System Requirements](../agents/validation_system.md)
+- **Task Queue Management Requirements**
 - [Ticket Workflow Requirements](./ticket_workflow.md)
 - [Monitoring & Fault Tolerance Requirements](../monitoring/fault_tolerance.md)
 

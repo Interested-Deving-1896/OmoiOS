@@ -502,8 +502,8 @@ collab_service.broadcast_message(
 
 ## Related Documents
 
-- [Hephaestus Agent Communication System Documentation](../../../docs/comparisons/hephaestus_agent_communication.md) (if available)
-- [OmoiOS Collaboration Service Design](../design/services/collaboration_service.md)
-- [OmoiOS EventBus Architecture](../design/services/event_bus_architecture.md)
+- **Hephaestus Agent Communication System Documentation** (if available)
+- **OmoiOS Collaboration Service Design**
+- **OmoiOS EventBus Architecture**
 - [OmoiOS Guardian System](../guardian/README.md)
-- [OmoiOS Task Queue Management](../design/services/task_queue.md.md)
+- **OmoiOS Task Queue Management**

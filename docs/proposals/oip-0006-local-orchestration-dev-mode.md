@@ -1,3 +1,5 @@
+# OIP-0006: Local Orchestration Dev Mode
+
 ```
 OIP: 0006
 Title: Local Orchestration Dev Mode

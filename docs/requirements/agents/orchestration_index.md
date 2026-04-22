@@ -3,7 +3,7 @@
 **Created**: 2025-11-20
 **Status**: Draft
 **Purpose**: Provides an overview and index of the multi-agent workflow orchestration system requirements, linking to detailed requirement documents.
-**Related**: ./agents/lifecycle_management.md, ./workflows/task_queue_management.md, ./workflows/ticket_workflow.md, ./workflows/validation_system.md, ./workflows/ticket_human_approval.md, ./workflows/result_submission.md, ./workflows/diagnosis_agent.md, ./monitoring/monitoring_architecture.md, ./monitoring/fault_tolerance.md, ./integration/mcp_servers.md, ./memory/memory_system.md
+**Related**: ./agent_lifecycle.md, ../workflows/task_queue.md, ../workflows/ticket_workflow.md, ../agents/validation_system.md, ../workflows/ticket_human_approval.md, ../workflows/result_submission.md, ../agents/diagnosis_agent.md, ../monitoring/monitoring_architecture.md, ../monitoring/fault_tolerance.md, **MCP Server Integration Requirements**, ../memory/memory_system.md
 
 ---
 
@@ -19,21 +19,21 @@ This requirements document specifies the functional and non-functional requireme
 ## Index of Split Requirement Documents
 
 - Agents
-  - [Agent Lifecycle Management Requirements](./agents/lifecycle_management.md)
+  - [Agent Lifecycle Management Requirements](./agent_lifecycle.md)
 - Workflows
-  - [Task Queue Management Requirements](./workflows/task_queue_management.md)
-  - [Ticket Workflow Requirements](./workflows/ticket_workflow.md)
-  - [Validation System Requirements](./workflows/validation_system.md)
-  - [Ticket Human Approval Requirements](./workflows/ticket_human_approval.md)
-  - [Enhanced Result Submission Requirements](./workflows/result_submission.md)
-  - [Diagnosis Agent Requirements](./workflows/diagnosis_agent.md)
+  - [Task Queue Management Requirements](../workflows/task_queue.md)
+  - [Ticket Workflow Requirements](../workflows/ticket_workflow.md)
+  - [Validation System Requirements](../agents/validation_system.md)
+  - [Ticket Human Approval Requirements](../workflows/ticket_human_approval.md)
+  - [Enhanced Result Submission Requirements](../workflows/result_submission.md)
+  - [Diagnosis Agent Requirements](../agents/diagnosis_agent.md)
 - Monitoring
-  - [Monitoring Architecture Requirements](./monitoring/monitoring_architecture.md)
-  - [Monitoring & Fault Tolerance Requirements](./monitoring/fault_tolerance.md)
+  - [Monitoring Architecture Requirements](../monitoring/monitoring_architecture.md)
+  - [Monitoring & Fault Tolerance Requirements](../monitoring/fault_tolerance.md)
 - Integration
-  - [MCP Server Integration Requirements](./integration/mcp_servers.md)
+  - **MCP Server Integration Requirements**
 - Memory
-  - [Agent Memory System Requirements](./memory/memory_system.md)
+  - [Agent Memory System Requirements](../memory/memory_system.md)
 
 ---
 
@@ -505,4 +505,4 @@ class Ticket:
 
 ---
 
-**Next Document**: [Product Design Document](../design/multi_agent_orchestration.md)
+**Next Document**: Product Design Document

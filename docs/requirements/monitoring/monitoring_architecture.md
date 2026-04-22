@@ -12,7 +12,7 @@
 
 Normative requirements for the monitoring stack: loop cadence, Guardian and Conductor behaviors, data contracts, APIs, events, configuration (with generic vector search and PGVector as a preferred implementation), SLOs, and Pydantic reference models.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -185,8 +185,8 @@ Agents MAY read monitoring-derived memories (e.g., high-risk components, recurri
 ## Related Documents
 
 - [Fault Tolerance Requirements](./fault_tolerance.md)
-- [Validation System Requirements](../workflows/validation_system.md)
-- [Diagnosis Agent Requirements](../workflows/diagnosis_agent.md)
+- [Validation System Requirements](../agents/validation_system.md)
+- [Diagnosis Agent Requirements](../agents/diagnosis_agent.md)
 
 ---
 

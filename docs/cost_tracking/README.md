@@ -513,10 +513,10 @@ Cost metrics can be integrated into monitoring dashboards:
 
 ## References
 
-- [Phase 5 Plan](../PHASE5_PARALLEL_PLAN.md)
+- **Phase 5 Plan**
 - [OpenAI Pricing](https://openai.com/pricing)
 - [Anthropic Pricing](https://www.anthropic.com/pricing)
-- [Cost Models Configuration](../../omoi_os/config/cost_models.yaml)
+- `../../omoi_os/config/cost_models.yaml`
 
 ---
 

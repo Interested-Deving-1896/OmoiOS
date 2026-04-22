@@ -143,10 +143,10 @@ This document contains 40 critical questions for implementing the multi-agent or
 
 ## Related Documents
 
-- [Multi-Agent Orchestration Design](../design/multi_agent_orchestration.md)
-- [Agent Lifecycle Management Design](../design/agent_lifecycle_management.md)
-- [Task Queue Management Design](../design/task_queue_management.md)
-- [Validation System Design](../design/validation_system.md)
+- Multi-Agent Orchestration Design
+- Agent Lifecycle Management Design
+- **Task Queue Management Design**
+- [Validation System Design](../../requirements/agents/validation_system.md)
 - [OpenHands SDK Documentation](https://docs.openhands.dev)
 
 ---

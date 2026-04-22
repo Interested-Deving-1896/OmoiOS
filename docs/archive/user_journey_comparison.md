@@ -394,6 +394,6 @@ Both documents are valuable:
 
 ## Related Documents
 
-- [User Journey](./user_journey.md) - Existing comprehensive documentation
-- [Product Vision](./product_vision.md) - Product concept
-- [Front-End Design](./design/frontend/project_management_dashboard.md) - UI/UX specifications
+- `./user_journey.md` - Existing comprehensive documentation
+- `./product_vision.md` - Product concept
+- `./design/frontend/project_management_dashboard.md` - UI/UX specifications

@@ -75,8 +75,8 @@ These have been split into focused sections organized in dedicated directories.
 ## Navigation
 
 ### Quick Start
-- **User Journey**: Start with [user_journey/README.md](./user_journey/README.md)
-- **Page Flows**: Start with [page_flows/README.md](./page_flows/README.md)
+- **User Journey**: Start with `./user_journey/README.md`
+- **Page Flows**: Start with `./page_flows/README.md`
 
 ### Original Files
 The original files (`user_journey.md` and `page_flow.md`) now contain redirect notices pointing to the new structure.

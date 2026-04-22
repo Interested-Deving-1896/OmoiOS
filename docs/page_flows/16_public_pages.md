@@ -340,3 +340,188 @@ Auth (public layout):
 ---
 
 **Next**: See [17_activity_timeline.md](./17_activity_timeline.md) for real-time activity timeline.
+
+
+---
+
+## Flow 67: Compare Page
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PAGE: /compare                                             │
+│                                                             │
+│  Compare OmoiOS vs Kiro vs Codex vs Claude Code            │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Full Comparison Table (horizontal scroll on mobile) │ │
+│  │                                                        │ │
+│  │  | Feature | OmoiOS | Kiro | Codex | Claude | ... |   │ │
+│  │  |-----------|--------|------|-------|---------|-----│ │
+│  │  | Open source | ✓ | ✗ | ✗ | ✓ | ... |                │ │
+│  │  | Where it runs | Cloud | IDE | Cloud+CLI | Terminal | │ │
+│  │  | You need to be | Asleep | At desk | At desk* | ... | │ │
+│  │  | Spec-to-code | Full | Specs+hooks | Prompt | ... |  │ │
+│  │  | Multi-agent | Parallel | Single | Parallel | ... |  │ │
+│  │  | Output | PR ready | Editor | PR via GH | Local | ...│ │
+│  │  | Self-healing | Auto | Manual | Tests | Manual | ... | │ │
+│  │  | Self-hostable | ✓ | ✗ | ✗ | ✗ | ... |              │ │
+│  │  | BYOK | Anthropic+ | Claude | GPT | Claude | ... |    │ │
+│  │  | Pricing | Free-$150 | Free | ChatGPT+ | Pro/Max |  │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  How is OmoiOS different from Kiro?                    │ │
+│  │  [Detailed comparison paragraph...]                    │ │
+│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  How is OmoiOS different from OpenAI Codex?          │ │
+│  │  [Detailed comparison paragraph...]                    │ │
+│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  How is OmoiOS different from Claude Code?           │ │
+│  │  [Detailed comparison paragraph...]                    │ │
+│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  How is OmoiOS different from OpenCode?                │ │
+│  │  [Detailed comparison paragraph...]                    │ │
+│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  How is OmoiOS different from Cursor?                  │ │
+│  │  [Detailed comparison paragraph...]                    │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Route
+`/compare`
+
+### Purpose
+Side-by-side competitive comparison page showing how OmoiOS differs from Kiro (AWS), OpenAI Codex, Claude Code, OpenCode (sst), and Cursor. Designed to help visitors understand OmoiOS's unique positioning: cloud-based autonomous execution with spec-driven orchestration vs. interactive desk-side tools.
+
+### Comparison Dimensions
+
+| Dimension | OmoiOS | Competitors |
+|-----------|--------|-------------|
+| Open source | ✓ Self-hostable | Kiro/Codex/Cursor closed; Claude Code open |
+| Runtime | Cloud (autonomous) | IDE, terminal, or local CLI |
+| User presence | Works while you sleep | Requires you at your desk |
+| Spec pipeline | Full spec-to-code | Specs+hooks, prompt-driven |
+| Multi-agent | Parallel agents | Single or limited parallel |
+| Output | PR ready to merge | Code in editor, local changes |
+| Self-healing | Retries + auto-fix | Manual or test-driven only |
+| Model choice | Anthropic + OpenAI | Single provider locked |
+| Pricing | Free–$150/mo | Various (ChatGPT+, $20/mo+) |
+
+### User Actions
+- **View comparison table**: Scroll horizontally on mobile to see all competitors
+- **Read detailed comparisons**: Click through per-competitor explanation sections
+- **Navigate to pricing**: Implicit CTA via pricing row in table
+- **Sign up**: Via MarketingNavbar links to `/register`
+
+### Components
+- `ComparePage` — Server component with SEO metadata
+- `MarketingNavbar` — Floating navigation with auth links
+- `FooterSection` — Marketing footer
+- `CellContent` — Renders checkmark/X or text for table cells
+- Comparison data defined in `rows[]` and `competitorSections[]` arrays
+
+### SEO
+- Custom title: "Compare OmoiOS vs Kiro vs Codex vs Claude Code"
+- Meta description highlighting open-source, spec-driven, autonomous orchestration
+- Canonical URL: `https://omoios.dev/compare`
+
+---
+
+## Flow 68: Onboarding Page
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PAGE: /onboarding                                          │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Welcome                    [Progress: 17% complete] │ │
+│  │  ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │                                                        │ │
+│  │  [Step Content - Dynamic based on current step]      │ │
+│  │                                                        │ │
+│  │  • WelcomeStep — Role selection & intro              │ │
+│  │  • GitHubStep — Connect GitHub account               │ │
+│  │  • RepoSelectStep — Choose repository                │ │
+│  │  • FirstSpecStep — Submit first feature spec        │ │
+│  │  • PlanSelectStep — Choose pricing tier              │ │
+│  │  • CompleteStep — Onboarding done, redirect          │ │
+│  │                                                        │ │
+│  │              [Continue]  [Skip]                       │ │
+│  │                                                        │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  ┌────────────────────────┐  ┌────────────────────────────┐ │
+│  │  Onboarding Checklist  │  │  [Collapsible sidebar]     │ │
+│  │                        │  │                            │ │
+│  │  ☐ Welcome             │  │  ☐ watch-agent             │ │
+│  │  ☐ Connect GitHub      │  │  ☐ review-pr               │ │
+│  │  ☐ Select Repository   │  │  ☐ invite-team             │ │
+│  │  ☐ First Feature       │  │                            │ │
+│  │  ☐ Choose Plan         │  │  (Post-onboarding tasks)   │ │
+│  │  ☑ Complete            │  │                            │ │
+│  └────────────────────────┘  └────────────────────────────┘ │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Route
+`/onboarding`
+
+### Purpose
+Multi-step onboarding wizard for new users. Guides them through connecting GitHub, selecting a repository, submitting their first feature spec, and choosing a plan. State is synchronized with the server and persisted locally. The wizard adapts based on detected state (e.g., auto-advancing if GitHub already connected).
+
+### Onboarding Steps
+
+| Step | Component | Purpose |
+|------|-----------|---------|
+| `welcome` | `WelcomeStep` | Role selection and introduction |
+| `github` | `GitHubStep` | Connect GitHub account via OAuth |
+| `repo` | `RepoSelectStep` | Select repository to work with |
+| `first-spec` | `FirstSpecStep` | Submit first feature description |
+| `plan` | `PlanSelectStep` | Choose pricing tier |
+| `complete` | `CompleteStep` | Finish and redirect to project/spec |
+
+### User Actions
+- **Navigate steps**: Continue, Back, Skip (on plan step)
+- **Connect GitHub**: OAuth flow with return to `/onboarding?step=repo`
+- **Select repository**: Browse and select from connected GitHub repos
+- **Submit first spec**: Enter feature description, creates spec + project automatically
+- **Select plan**: Choose Starter/Pro/Team tier
+- **Complete onboarding**: Redirects to spec detail (if spec created) or `/command`
+
+### State Management
+- **Zustand store**: `useOnboardingStore` with persistence to localStorage
+- **Server sync**: `syncFromServer()` merges server state on mount
+- **GitHub polling**: `checkGitHubConnection()` verifies OAuth completion
+- **Spec status polling**: Polls spec endpoint every 10s to detect completion
+- **Cookie integration**: `setOnboardingCookie()` for middleware auth checks
+
+### Components
+- `OnboardingPage` — Suspense wrapper with skeleton fallback
+- `OnboardingWizard` — Main orchestrator component with progress bar and step routing
+- `OnboardingChecklist` — Sidebar showing completed/pending steps
+- `WelcomeStep`, `GitHubStep`, `RepoSelectStep`, `FirstSpecStep`, `PlanSelectStep`, `CompleteStep` — Individual step components
+
+### Hooks
+- `useOnboarding()` — Main hook providing state, navigation, and actions
+- `useOnboardingStore` — Zustand store for persistent state
+
+### API Integration
+- `fetchOnboardingStatus()` — GET onboarding state from server
+- `updateOnboardingStep()` — POST step progression with data
+- `completeOnboardingServer()` — POST final completion
+- `detectOnboardingState()` — GET detected completed steps
+- `launchSpec()` — Creates first spec via spec-driven workflow
+
+---
+
+**Next**: See [17_activity_timeline.md](./17_activity_timeline.md) for real-time activity timeline.

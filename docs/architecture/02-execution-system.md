@@ -412,3 +412,28 @@ uvicorn omoi_os.api.main:app --reload
 | `query_sandbox_events.py` | Query events | `uv run python scripts/query_sandbox_events.py <id>` |
 | `list_recent_sandboxes.py` | List sandboxes | `uv run python scripts/list_recent_sandboxes.py` |
 | `cleanup_sandboxes.py` | Cleanup | `python scripts/cleanup_sandboxes.py --full-cleanup` |
+
+
+## Related Documentation
+
+### Architecture Deep-Dives
+- [Part 1: Planning System](01-planning-system.md) — Spec generation and phase management
+- [Part 4: Readjustment System](04-readjustment-system.md) — Monitoring and steering
+- [Part 10: GitHub Integration](10-github-integration.md) — Branch and PR workflows
+- [Part 16: Service Catalog](16-service-catalog.md) — All backend services
+
+### Design Docs
+- Sandbox Agents Architecture — Core sandbox system design
+- Sandbox Agents Gap Analysis — Implementation status
+- Git Branch Workflow — Branch management patterns
+- Communication Patterns — Sandbox event flow
+- HTTP API Migration — Event reporting architecture
+- [Task Queue](../design/services/task_queue.md) — Task assignment and lifecycle
+
+### Page Flows
+- [13 - Sandbox System](../page_flows/13_sandbox_system.md) — Sandbox monitoring UI
+- [10a - Monitoring System](../page_flows/10a_monitoring_system.md) — Agent monitoring dashboard
+
+### Requirements
+- [Task Queue](../requirements/workflows/task_queue.md) — Task queue requirements
+- [Agent Lifecycle](../requirements/agents/agent_lifecycle.md) — Agent state management

@@ -1195,7 +1195,7 @@ All diagrams that include WebSocket events show:
 
 ## Related Documentation
 
-- [User Journey](./user_journey.md) - Detailed user journey documentation
-- [Page Flow](./page_flow.md) - Detailed page-by-page flows
-- [User Flows Summary](./user_flows_summary.md) - Summary of all flows
+- [User Journey](../user_journey.md) - Detailed user journey documentation
+- [Page Flow](../page_flow.md) - Detailed page-by-page flows
+- **User Flows Summary** - Summary of all flows
 

@@ -1,3 +1,5 @@
+# OIP-0003: Streamlined Onboarding with Deferred GitHub
+
 ```
 OIP: 0003
 Title: Streamlined Onboarding with Deferred GitHub

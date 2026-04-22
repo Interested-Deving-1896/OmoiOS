@@ -111,7 +111,8 @@ Let AI run overnight and finish your software for you. Describe what you want, a
 
 - [13_sandbox_system.md](./13_sandbox_system.md) - Sandbox execution monitoring and agent messaging
 - [17_activity_timeline.md](./17_activity_timeline.md) - Real-time system activity feed
-- [06_visualizations.md](./06_visualizations.md) - Graphs, statistics, and activity timelines
+- [18_prototype_system.md](./18_prototype_system.md) - Rapid prototyping workspace (Flow 68)
+-
 - [10_command_center.md](./10_command_center.md) - Analytics Dashboard (secondary page)
 - [10a_monitoring_system.md](./10a_monitoring_system.md) - Guardian & System Health monitoring
 - [09a_diagnostic_reasoning.md](./09a_diagnostic_reasoning.md) - Understanding why decisions were made
@@ -186,7 +187,8 @@ Let AI run overnight and finish your software for you. Describe what you want, a
 | 65     | Showcase Page                    | [16_public_pages.md](./16_public_pages.md)                       |
 | 66     | OAuth Callback                   | [16_public_pages.md](./16_public_pages.md)                       |
 | 67     | Activity Timeline                | [17_activity_timeline.md](./17_activity_timeline.md)             |
-
+| 68     | Prototype Workspace              | [18_prototype_system.md](./18_prototype_system.md)               |
+|
 ## Common API Error Responses
 
 All API endpoints follow a consistent error response format.
@@ -273,6 +275,6 @@ All API endpoints follow a consistent error response format.
 ## Related Documentation
 
 - [User Journey Documentation](../user_journey/README.md) - Complete user journey from onboarding to completion
-- [Page Architecture](../page_architecture.md) - Complete page architecture specifications
-- [Design System](../design_system.md) - UI/UX design system guide
-- [App Overview](../app_overview.md) - High-level application overview
+- Page Architecture - Complete page architecture specifications
+- Design System - UI/UX design system guide
+- App Overview - High-level application overview

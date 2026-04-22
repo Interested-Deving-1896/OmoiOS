@@ -1,3 +1,31 @@
+# OmoiOS Assets
+
+This directory contains static assets for the OmoiOS project — images, GIFs, and graphics used across documentation, the landing page, and marketing materials.
+
+## Files
+
+| File | Purpose | Size |
+|------|---------|------|
+| `banner.svg` | Project banner/logo for README and docs | ~11 KB |
+| `demo-code-assistant.gif` | Demo GIF showing the code assistant feature | ~1.8 MB |
+| `demo-specs-driven.gif` | Demo GIF showing spec-driven agent execution | ~6.1 MB |
+| `social-preview.png` | Open Graph / social media preview image | ~235 KB |
+
+## Usage
+
+These assets are referenced from:
+- `README.md` — Banner and demo GIFs
+- `docs/` — Various documentation files
+- `frontend/` — Landing page components
+
+## Adding New Assets
+
+When adding new demo GIFs or images:
+1. Optimize file size (use tools like ImageOptim or ffmpeg for GIFs)
+2. Use descriptive filenames (e.g., `demo-feature-name.gif`)
+3. Update this CLAUDE.md with the new file entry
+4. Reference from appropriate documentation
+
 <claude-mem-context>
 # Recent Activity
 

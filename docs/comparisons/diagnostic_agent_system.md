@@ -300,6 +300,6 @@ This will bring OmoiOS to **~95% feature parity** while maintaining its architec
 
 ## Related Documents
 
-- [Hephaestus Adoption Analysis](./hephaestus_adoption_analysis.md) - Phase system comparison
+- **Hephaestus Adoption Analysis** - Phase system comparison
 - [Diagnostic System README](../diagnostic/README.md) - OmoiOS diagnostic documentation
 - [Discovery Service](../implementation/workflows/hephaestus_workflow_enhancements.md) - Discovery/branching system

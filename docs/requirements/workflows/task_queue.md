@@ -12,7 +12,7 @@
 
 This document defines requirements for the end-to-end task queue subsystem that powers multi-agent workflows. It specifies the task data model, priority scoring, assignment logic, discovery-driven branching, and validation feedback loops.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -368,10 +368,10 @@ When assigning a task to an agent, THE SYSTEM MAY request contextual memories fo
 ---
 ## Related Documents
 
-- [Agent Lifecycle Management Requirements](../agents/lifecycle_management.md)
+- **Agent Lifecycle Management Requirements**
 - [Monitoring & Fault Tolerance Requirements](../monitoring/fault_tolerance.md)
 - [Ticket Workflow Requirements](./ticket_workflow.md)
-- [MCP Integration Requirements](../integration/mcp_servers.md)
+- **MCP Integration Requirements**
 
 ---
 

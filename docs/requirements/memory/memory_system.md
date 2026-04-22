@@ -12,7 +12,7 @@
 
 This document defines normative requirements for the server-based Agent Memory System. It specifies memory taxonomy, data models, hybrid search behavior, ACE workflow responsibilities, APIs, and non-functional constraints. The implementation is expected to use PostgreSQL with pgvector for semantic search, but all search requirements MUST be expressed in terms of a generic vector search capability.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -341,8 +341,8 @@ class CompleteTaskRequest(BaseModel):
 ## Related Documents
 
 - [Monitoring Architecture Requirements](../monitoring/monitoring_architecture.md)
-- [Task Queue Management Requirements](../workflows/task_queue_management.md)
-- [Diagnosis Agent Requirements](../workflows/diagnosis_agent.md)
+- **Task Queue Management Requirements**
+- [Diagnosis Agent Requirements](../agents/diagnosis_agent.md)
 
 ---
 

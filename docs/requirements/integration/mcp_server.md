@@ -12,7 +12,7 @@
 
 This document specifies requirements for integrating external tools via MCP servers, including tool registration, authorization, failure handling, and retry logic.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -146,8 +146,8 @@ class MCPInvocationResult(BaseModel):
 
 ## Related Documents
 
-- [Agent Lifecycle Management Requirements](../agents/lifecycle_management.md)
-- [Task Queue Management Requirements](../workflows/task_queue_management.md)
+- **Agent Lifecycle Management Requirements**
+- **Task Queue Management Requirements**
 - [Monitoring & Fault Tolerance Requirements](../monitoring/fault_tolerance.md)
 
 ---

@@ -12,7 +12,7 @@
 
 This document specifies detailed requirements for managing the complete lifecycle of agents within the multi-agent orchestration system. It covers agent registration, state transitions, heartbeat protocols, resource allocation, and graceful termination procedures.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -530,9 +530,9 @@ THE SYSTEM SHALL execute:
 
 ## Related Documents
 
-- [Task Queue Management Requirements](../workflows/task_queue_management.md)
+- **Task Queue Management Requirements**
 - [Monitoring & Fault Tolerance Requirements](../monitoring/fault_tolerance.md)
-- [MCP Integration Requirements](../integration/mcp_servers.md)
+- **MCP Integration Requirements**
 
 ---
 

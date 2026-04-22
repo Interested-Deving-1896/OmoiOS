@@ -176,4 +176,4 @@ class Project(Base):
 ## Related Documents
 
 - [Auth System](../auth/auth_system.md) - GitHub OAuth integration
-- [Product Vision](../../product_vision.md) - Core workflow description
+- Product Vision - Core workflow description

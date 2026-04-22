@@ -119,9 +119,15 @@ Let AI run overnight and finish your software for you. Describe what you want, a
 - [10_additional_flows.md](./10_additional_flows.md) - Edge cases, error handling, collaboration, org management
 - [09_design_principles.md](./09_design_principles.md) - Design system and success metrics
 
+**API Keys, Organizations & Operations:**
+- [16_api_keys_management.md](./16_api_keys_management.md) - API key generation, rotation, permissions, usage tracking
+- [17_organization_management.md](./17_organization_management.md) - Org creation, member roles, RBAC, team workspaces, billing
+- [18_sandbox_troubleshooting.md](./18_sandbox_troubleshooting.md) - Sandbox lifecycle, agent failures, resource limits, debugging
+- [19_upgrade_migration.md](./19_upgrade_migration.md) - Version upgrades, DB migration troubleshooting, rollback procedures
+
 ## Related Documentation
 
 - [Page Flows Documentation](../page_flows/README.md) - Detailed page-by-page navigation flows
-- [Page Architecture](../page_architecture.md) - Complete page architecture specifications
-- [Design System](../design_system.md) - UI/UX design system guide
-- [App Overview](../app_overview.md) - High-level application overview
+- Page Architecture - Complete page architecture specifications
+- Design System - UI/UX design system guide
+- App Overview - High-level application overview

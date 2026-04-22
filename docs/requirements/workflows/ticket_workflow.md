@@ -4,7 +4,7 @@
 
 This document specifies the Kanban-style ticket state machine, phase orchestration across tickets, blocking detection, and parallel processing rules.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -147,9 +147,9 @@ class PhaseGateArtifacts(BaseModel):
 
 ## Related Documents
 
-- [Task Queue Management Requirements](./task_queue_management.md)
+- **Task Queue Management Requirements**
 - [Monitoring & Fault Tolerance Requirements](../monitoring/fault_tolerance.md)
-- [MCP Integration Requirements](../integration/mcp_servers.md)
+- **MCP Integration Requirements**
 
 ---
 

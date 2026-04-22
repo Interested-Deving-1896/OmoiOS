@@ -399,7 +399,7 @@ Saves changes → System applies new configuration
 - [05_optimization.md](./05_optimization.md) - Monitoring insights and optimization
 - [06_key_interactions.md](./06_key_interactions.md) - Monitoring interactions and notifications
 - [11_cost_memory_management.md](./11_cost_memory_management.md) - Cost budgets, Memory patterns, and Alert management
-- [Product Vision](../product_vision.md) - Adaptive Monitoring Loop architecture
+- Product Vision - Adaptive Monitoring Loop architecture
 
 ---
 

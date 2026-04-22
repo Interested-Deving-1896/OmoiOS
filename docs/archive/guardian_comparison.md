@@ -201,6 +201,6 @@ These enhancements would make OmoiOS's Guardian even more effective at keeping a
 
 ## Related Documents
 
-- [Product Vision](./product_vision.md) - OmoiOS product vision
-- [Intelligent Monitoring Enhancements](./implementation/monitoring/intelligent_monitoring_enhancements.md) - Current Guardian implementation
-- [Hephaestus Workflow Enhancements](./implementation/workflows/hephaestus_workflow_enhancements.md) - Phase-based workflow system
+- `./product_vision.md` - OmoiOS product vision
+- `./implementation/monitoring/intelligent_monitoring_enhancements.md` - Current Guardian implementation
+- `./implementation/workflows/hephaestus_workflow_enhancements.md` - Phase-based workflow system

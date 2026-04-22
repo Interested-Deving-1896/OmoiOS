@@ -12,7 +12,7 @@
 
 This document details heartbeat detection, automatic restart, anomaly detection, escalation, and quarantine protocols for resilient multi-agent operations.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -234,9 +234,9 @@ class QuarantineRecord(BaseModel):
 
 ## Related Documents
 
-- [Agent Lifecycle Management Requirements](../agents/lifecycle_management.md)
-- [Task Queue Management Requirements](../workflows/task_queue_management.md)
-- [MCP Integration Requirements](../integration/mcp_servers.md)
+- **Agent Lifecycle Management Requirements**
+- **Task Queue Management Requirements**
+- **MCP Integration Requirements**
 
 ---
 

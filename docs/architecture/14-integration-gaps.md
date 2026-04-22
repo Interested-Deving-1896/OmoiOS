@@ -15,7 +15,7 @@ Last Updated: 2026-03-01
 | **Event System** | 153 event publishes vs 18 subscribes | Critical |
 | **DAG System** | CoordinationService not initialized in orchestrator | ✅ Resolved (2026-03) |
 | **Test Coverage** | 20 integration tests for 100 services | High |
-| **TODO Items** | 51 TODO/FIXME comments in codebase | High |
+| **Pending Enhancements Items** | 51 Pending Enhancements/Deferred Implementation comments in codebase | High |
 
 ---
 
@@ -177,26 +177,26 @@ WHAT'S CONNECTED:
 
 ---
 
-## Gap 5: TODO/FIXME Items (51 Found)
+## Gap 5: Pending Enhancements/Deferred Implementation Items (51 Found)
 
-### Critical TODOs
+### Critical Pending Enhancementss
 
-| File | Line | TODO |
+| File | Line | Pending Enhancements |
 |------|------|------|
-| `alerting.py` | 337 | `TODO: Implement actual email sending` |
-| `alerting.py` | 346 | `TODO: Implement actual Slack webhook POST` |
-| `alerting.py` | 355 | `TODO: Implement actual HTTP webhook POST` |
-| `agent_registry.py` | 460 | `TODO: Implement version compatibility matrix` |
-| `agent_registry.py` | 484 | `TODO: Implement resource availability check` |
-| `restart_orchestrator.py` | 180 | `TODO: Implement cooldown tracking` |
-| `restart_orchestrator.py` | 184 | `TODO: Implement restart attempt tracking` |
-| `phase_progression_service.py` | 636 | `TODO: Check .omoi_os/specs/ directory` |
-| `phase_progression_service.py` | 717 | `TODO: Integrate with parse_specs.py` |
-| `billing.py` | 842-927 | `TODO: Add proper admin authentication check` (3 places) |
+| `alerting.py` | 337 | `Pending Enhancements: Implement actual email sending` |
+| `alerting.py` | 346 | `Pending Enhancements: Implement actual Slack webhook POST` |
+| `alerting.py` | 355 | `Pending Enhancements: Implement actual HTTP webhook POST` |
+| `agent_registry.py` | 460 | `Pending Enhancements: Implement version compatibility matrix` |
+| `agent_registry.py` | 484 | `Pending Enhancements: Implement resource availability check` |
+| `restart_orchestrator.py` | 180 | `Pending Enhancements: Implement cooldown tracking` |
+| `restart_orchestrator.py` | 184 | `Pending Enhancements: Implement restart attempt tracking` |
+| `phase_progression_service.py` | 636 | `Pending Enhancements: Check .omoi_os/specs/ directory` |
+| `phase_progression_service.py` | 717 | `Pending Enhancements: Integrate with parse_specs.py` |
+| `billing.py` | 842-927 | `Pending Enhancements: Add proper admin authentication check` (3 places) |
 
-### Medium Priority TODOs
+### Medium Priority Pending Enhancementss
 
-| File | TODO |
+| File | Pending Enhancements |
 |------|------|
 | `memory.py:703` | Make extract_pattern async |
 | `tickets.py:491` | Make embedding service async |
@@ -229,20 +229,20 @@ Some API routes import services that may not be initialized at startup:
 1. ~~Wire CoordinationService into orchestrator_worker.py~~ ✅ Done (March 2026)
 2. ~~Wire ConvergenceMergeService into orchestrator_worker.py~~ ✅ Done (March 2026)
 3. Add subscribers for critical events (BUDGET_*, ALERT_*)
-4. Fix admin auth TODOs in billing routes
+4. Fix admin auth Pending Enhancementss in billing routes
 
 ### Phase 2: High
 
 1. Add integration tests for MonitoringLoop, Guardian, Conductor
 2. Add integration tests for DiscoveryService
-3. Implement alerting TODOs (email, Slack, webhooks)
-4. Implement restart_orchestrator TODOs
+3. Implement alerting Pending Enhancementss (email, Slack, webhooks)
+4. Implement restart_orchestrator Pending Enhancementss
 
 ### Phase 3: Medium
 
 1. Add event subscribers for remaining orphaned events
 2. Add integration tests for remaining untested services
-3. Implement remaining TODO items
+3. Implement remaining Pending Enhancements items
 4. Performance test per-request service initialization
 
 ---
@@ -451,3 +451,22 @@ grep -r "event_bus.subscribe" backend/omoi_os/ | wc -l
 │                                                                      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+
+## Related Documentation
+
+### Architecture Deep-Dives
+- [Part 2: Execution System](02-execution-system.md) — Worker integration
+- [Part 4: Readjustment System](04-readjustment-system.md) — Monitoring integration
+- [Part 6: Real-Time Events](06-realtime-events.md) — Event system gaps
+- [Part 13: API Route Catalog](13-api-route-catalog.md) — API initialization
+- [Part 16: Service Catalog](16-service-catalog.md) — Service initialization
+
+### Design Docs
+- [Monitoring Architecture](../requirements/monitoring/monitoring_architecture.md) — Monitoring design
+- [Fault Tolerance](../requirements/monitoring/fault_tolerance.md) — Resilience patterns
+- Diagnostic True Gaps — Diagnostic gaps
+
+### Requirements
+- [Monitoring](../requirements/monitoring/monitoring_architecture.md) — Monitoring requirements
+- [Fault Tolerance](../requirements/monitoring/fault_tolerance.md) — Resilience requirements

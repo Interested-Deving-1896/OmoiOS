@@ -12,7 +12,7 @@
 
 This document defines the human-in-the-loop approval gate for ticket creation/activation. When enabled, agent-initiated ticket creation is placed in a pending review state until explicitly approved or rejected by a human. The gate prevents unnecessary workspace/branch/sandbox spin-up before approval.
 
-**Parent Document**: [Multi-Agent Orchestration Requirements](../multi_agent_orchestration.md)
+**Parent Document**: Multi-Agent Orchestration Requirements
 
 ---
 
@@ -180,8 +180,8 @@ class RejectTicketResponse(BaseModel):
 ## Related Documents
 
 - [Ticket Workflow Requirements](./ticket_workflow.md)
-- [Task Queue Management Requirements](./task_queue_management.md)
-- [Validation System Requirements](./validation_system.md)
+- **Task Queue Management Requirements**
+- [Validation System Requirements](../agents/validation_system.md)
 - [Monitoring & Fault Tolerance Requirements](../monitoring/fault_tolerance.md)
 
 ---

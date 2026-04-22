@@ -565,6 +565,6 @@ phases:
 
 ## Related Documents
 
-- [User Journey](./user_journey.md) - OmoiOS complete user flow
-- [Hephaestus Workflow Enhancements](./implementation/workflows/hephaestus_workflow_enhancements.md) - OmoiOS phase system implementation
-- [Product Vision](./product_vision.md) - OmoiOS product concept
+- `./user_journey.md` - OmoiOS complete user flow
+- `./implementation/workflows/hephaestus_workflow_enhancements.md` - OmoiOS phase system implementation
+- `./product_vision.md` - OmoiOS product concept

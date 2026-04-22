@@ -2,7 +2,7 @@
 
 **Created**: 2025-12-17  
 **Status**: Ready for Testing  
-**Related**: [09_rich_activity_feed_architecture.md](../design/sandbox-agents/09_rich_activity_feed_architecture.md)
+**Related**: 09_rich_activity_feed_architecture.md
 
 ---
 

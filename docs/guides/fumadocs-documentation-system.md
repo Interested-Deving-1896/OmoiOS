@@ -403,7 +403,7 @@ just dev-all
 <Cards>
   <Card title="Create Your First Project" href="/docs/guides/creating-projects" />
   <Card title="Understanding Specs" href="/docs/concepts/specs" />
-  <Card title="Agent Workflows" href="/docs/guides/agent-workflows" />
+  <Card title="Agent Workflows" href="../architecture/02-execution-system.md" />
 </Cards>
 ```
 

@@ -1353,3 +1353,28 @@ uv run spec-sandbox run --help    # Use CLI
 - Production compatibility (HTTPReporter posts to callback)
 - Flexible configuration (all settings optional with sane defaults)
 - Same package injection pattern as production (file upload)
+
+
+## Related Documentation
+
+### Architecture Deep-Dives
+- [Part 1: Planning System](01-planning-system.md) — Spec phase orchestration
+- [Part 2: Execution System](02-execution-system.md) — Sandbox execution
+- [Part 15: LLM Service](15-llm-service.md) — Claude Agent SDK integration
+
+### Design Docs
+- Sandbox Agents Architecture — Core sandbox design
+- Sandbox Agents Gap Analysis — Implementation status
+- Git Branch Workflow — Branch patterns
+- Communication Patterns — Event flow
+- HTTP API Migration — Reporter implementation
+- Implementation Checklist — Testing guide
+
+### Page Flows
+- [02 - Projects & Specs](../page_flows/02_projects_specs.md) — Spec management UI
+- [07 - Phases](../page_flows/07_phases.md) — Phase management
+- [13 - Sandbox System](../page_flows/13_sandbox_system.md) — Sandbox monitoring
+
+### Requirements
+- [Agent Lifecycle](../requirements/agents/agent_lifecycle.md) — Agent state management
+- [Orchestration Index](../requirements/agents/orchestration_index.md) — Agent orchestration

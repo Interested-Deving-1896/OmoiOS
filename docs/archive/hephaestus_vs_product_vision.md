@@ -474,6 +474,6 @@ OmoiOS product vision **strongly aligns** with Hephaestus interconnection philos
 
 ## Related Documents
 
-- [Product Vision](./product_vision.md) - Complete product concept
-- [User Journey](./user_journey.md) - Complete user flow
-- [Hephaestus Workflow Enhancements](./implementation/workflows/hephaestus_workflow_enhancements.md) - Implementation details
+- `./product_vision.md` - Complete product concept
+- `./user_journey.md` - Complete user flow
+- `./implementation/workflows/hephaestus_workflow_enhancements.md` - Implementation details

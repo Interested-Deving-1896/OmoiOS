@@ -450,7 +450,7 @@ cleanup_result = workspace_manager.cleanup_workspace(
 
 ## Related Documentation
 
-- [Workspace Isolation System Design](../design/agents/workspace_isolation_system.md)
-- [Agent Executor Service](../services/agent_executor.md)
-- [Validation System Design](../design/workflows/validation_system.md)
+- Workspace Isolation System Design
+- **Agent Executor Service**
+- [Validation System Design](../../requirements/agents/validation_system.md)
 
