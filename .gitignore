@@ -118,3 +118,20 @@ __pycache__/
 logs/
 test.txt
 *.core
+
+# Deep-docs pipeline artifacts
+.inventory/
+.baseline/
+.checkpoint/
+__deep_docs_summary__.md
+docs/__deep_docs_summary__.md
+litho.local.toml
+.litho/
+
+# Agent tool recordings (test artifacts)
+backend/.monitoring-recordings/
+frontend/.event-recordings/
+
+# Drafts and local tool configs
+drafts/
+opencode.json
