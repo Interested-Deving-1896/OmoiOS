@@ -22,6 +22,10 @@ from omoi_os.config import load_anthropic_settings
 from omoi_os.logging import get_logger
 from omoi_os.models.user_credentials import UserCredential
 from omoi_os.services.database import DatabaseService
+from omoi_os.services.credential_encryption import (
+    get_credential_encryption_service,
+    EncryptionError,
+)
 
 logger = get_logger(__name__)
 
@@ -171,6 +175,54 @@ class CredentialsService:
             # GitHub intentionally not checked - must come from user OAuth
         }
 
+    def _get_decrypted_api_key(self, credential: UserCredential) -> str:
+        """Get decrypted API key from credential.
+        
+        Transparently handles encryption/decryption:
+        - If encrypted_value exists, decrypt and return
+        - If only api_key exists (legacy), return as-is and encrypt for future
+        
+        Args:
+            credential: UserCredential with encrypted_value or api_key
+            
+        Returns:
+            Decrypted API key
+            
+        Security:
+            - Never logs the decrypted value
+            - Handles encryption errors gracefully
+        """
+        encryption_service = get_credential_encryption_service()
+        
+        # Try encrypted value first (preferred)
+        if credential.encrypted_value:
+            if encryption_service.is_configured:
+                try:
+                    return encryption_service.decrypt(credential.encrypted_value)
+                except EncryptionError as e:
+                    logger.error(f"Failed to decrypt credential {credential.id}: {e}")
+                    # Fall through to try plaintext
+            else:
+                logger.warning(
+                    f"Credential {credential.id} has encrypted_value but "
+                    "encryption service not configured"
+                )
+        
+        # Fall back to plaintext api_key (legacy or unencrypted)
+        if credential.api_key:
+            # If encryption is available, encrypt for future use
+            if encryption_service.is_configured and not credential.encrypted_value:
+                try:
+                    encrypted = encryption_service.encrypt(credential.api_key)
+                    credential.encrypted_value = encrypted
+                    logger.debug(f"Encrypted credential {credential.id} for future use")
+                except EncryptionError as e:
+                    logger.warning(f"Could not encrypt credential {credential.id}: {e}")
+            
+            return credential.api_key
+        
+        return ""
+
     def get_user_credential(
         self,
         user_id: UUID,
@@ -235,7 +287,7 @@ class CredentialsService:
         # Try user-specific credentials first
         if user_id:
             user_cred = self.get_user_credential(user_id, "anthropic", session)
-            if user_cred and user_cred.api_key:
+            if user_cred and (user_cred.api_key or user_cred.encrypted_value):
                 logger.debug(f"Using user credentials for user {user_id}")
 
                 # Extract model configuration from config_data
@@ -243,9 +295,12 @@ class CredentialsService:
 
                 # User credentials may have OAuth token stored in config_data
                 oauth_token = config.get("oauth_token")
+                
+                # Get decrypted API key (handles transparent encryption)
+                decrypted_key = self._get_decrypted_api_key(user_cred)
 
                 return AnthropicCredentials(
-                    api_key=user_cred.api_key,
+                    api_key=decrypted_key,
                     oauth_token=oauth_token,
                     base_url=user_cred.base_url,
                     model=user_cred.model or config.get("model"),
@@ -333,11 +388,13 @@ class CredentialsService:
 
         # Try user's stored credential as fallback (provider="github")
         user_cred = self.get_user_credential(user_id, "github", session)
-        if user_cred and user_cred.api_key:
+        if user_cred and (user_cred.api_key or user_cred.encrypted_value):
             logger.debug(f"Using stored GitHub credential for user {user_id}")
             config = user_cred.config_data or {}
+            # Get decrypted API key (handles transparent encryption)
+            decrypted_key = self._get_decrypted_api_key(user_cred)
             return GitHubCredentials(
-                access_token=user_cred.api_key,
+                access_token=decrypted_key,
                 username=config.get("username"),
                 source="user",
             )
@@ -372,11 +429,13 @@ class CredentialsService:
         # Try user-specific credentials first
         if user_id:
             user_cred = self.get_user_credential(user_id, provider, session)
-            if user_cred and user_cred.api_key:
+            if user_cred and (user_cred.api_key or user_cred.encrypted_value):
                 logger.debug(f"Using user credentials for {provider} (user {user_id})")
+                # Get decrypted API key (handles transparent encryption)
+                decrypted_key = self._get_decrypted_api_key(user_cred)
                 return GenericCredentials(
                     provider=provider,
-                    api_key=user_cred.api_key,
+                    api_key=decrypted_key,
                     base_url=user_cred.base_url,
                     model=user_cred.model,
                     config_data=user_cred.config_data or {},
@@ -494,12 +553,24 @@ class CredentialsService:
         """
 
         def _save(sess: Session) -> UserCredential:
+            # Encrypt the API key if encryption is available
+            encryption_service = get_credential_encryption_service()
+            encrypted_value = None
+            if encryption_service.is_configured:
+                try:
+                    encrypted_value = encryption_service.encrypt(api_key)
+                    logger.debug(f"Encrypted API key for {provider}")
+                except EncryptionError as e:
+                    logger.warning(f"Could not encrypt API key: {e}")
+            
             # Check for existing credential
             existing = self.get_user_credential(user_id, provider, sess)
 
             if existing:
                 # Update existing
                 existing.api_key = api_key
+                if encrypted_value:
+                    existing.encrypted_value = encrypted_value
                 existing.base_url = base_url
                 existing.model = model
                 if name:
@@ -515,6 +586,7 @@ class CredentialsService:
                 user_id=user_id,
                 provider=provider,
                 api_key=api_key,
+                encrypted_value=encrypted_value,
                 base_url=base_url,
                 model=model,
                 name=name or f"{provider.title()} API Key",
