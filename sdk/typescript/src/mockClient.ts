@@ -1,8 +1,3 @@
-/**
- * Mock client for OmoiOS API - returns fixture data for development.
- */
-
-import { OmoiOSClient, type GetEnvironmentResult } from './client.js';
 import { NotFoundError } from './errors.js';
 import type {
   Artifact,
@@ -14,6 +9,7 @@ import type {
   Credential,
   Environment,
   EnvironmentVersion,
+  GetEnvironmentResult,
   VariableType,
   WebhookDelivery,
   WebhookEvent,
@@ -28,7 +24,7 @@ import { randomUUID, createHash } from 'crypto';
  * Use this for development while the backend is being built.
  * All methods return typed fixture data.
  */
-export class MockOmoiOSClient extends OmoiOSClient {
+export class MockOmoiOSClient {
   private credentials: Map<string, Credential> = new Map();
   private environments: Map<string, Environment> = new Map();
   private environmentVersions: Map<string, EnvironmentVersion[]> = new Map();
@@ -38,14 +34,12 @@ export class MockOmoiOSClient extends OmoiOSClient {
   private workspaceSettings: Map<string, WorkspaceSettings> = new Map();
 
   constructor() {
-    super('https://api.omoios.dev', 'mock-key');
     this.initFixtures();
   }
 
   private initFixtures(): void {
     const now = new Date().toISOString();
 
-    // Credentials
     const cred: Credential = {
       id: 'cred_1',
       workspace_id: 'ws_1',
@@ -56,7 +50,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     };
     this.credentials.set(cred.id, cred);
 
-    // Environments
     const env: Environment = {
       id: 'env_1',
       org_id: 'org_1',
@@ -67,7 +60,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     };
     this.environments.set(env.id, env);
 
-    // Environment version
     const version: EnvironmentVersion = {
       id: 'ver_1',
       environment_id: env.id,
@@ -80,7 +72,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     };
     this.environmentVersions.set(env.id, [version]);
 
-    // Artifacts
     const artifact: Artifact = {
       id: 'art_1',
       workspace_id: 'ws_1',
@@ -96,7 +87,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     };
     this.artifacts.set(artifact.id, artifact);
 
-    // Webhooks
     const webhook: WebhookSubscription = {
       id: 'wh_1',
       org_id: 'org_1',
@@ -107,7 +97,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     };
     this.webhooks.set(webhook.id, webhook);
 
-    // Webhook deliveries
     const delivery: WebhookDelivery = {
       id: 'wd_1',
       subscription_id: webhook.id,
@@ -120,7 +109,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     };
     this.webhookDeliveries.set(webhook.id, [delivery]);
 
-    // Workspace settings
     const settings: WorkspaceSettings = {
       id: 'ws_settings_1',
       workspace_id: 'ws_1',
@@ -134,8 +122,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
   private generateId(prefix: string): string {
     return `${prefix}_${randomUUID().replace(/-/g, '').slice(0, 8)}`;
   }
-
-  // Credentials
 
   listCredentials(workspaceId?: string): Credential[] {
     const creds = Array.from(this.credentials.values());
@@ -173,8 +159,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     }
     this.credentials.delete(credentialId);
   }
-
-  // Environments
 
   listEnvironments(): Environment[] {
     return Array.from(this.environments.values());
@@ -229,8 +213,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     return version;
   }
 
-  // Artifacts
-
   uploadArtifact(fileContent: Buffer, workspaceId?: string): Artifact {
     const now = new Date().toISOString();
     const artifactId = this.generateId('art');
@@ -283,8 +265,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     this.artifacts.delete(artifactId);
   }
 
-  // Webhooks
-
   listWebhooks(): WebhookSubscription[] {
     return Array.from(this.webhooks.values());
   }
@@ -318,8 +298,6 @@ export class MockOmoiOSClient extends OmoiOSClient {
     }
     return this.webhookDeliveries.get(subscriptionId) ?? [];
   }
-
-  // Workspace Settings
 
   getWorkspaceSettings(workspaceId: string): WorkspaceSettings {
     const settings = this.workspaceSettings.get(workspaceId);

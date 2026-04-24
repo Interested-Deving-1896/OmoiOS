@@ -742,6 +742,76 @@ class DaytonaSpawnerService:
                         f"Failed to decode TASK_DATA_BASE64 for ticket info: {e}"
                     )
 
+        # Enforce workspace isolation after extra_env so caller-provided values cannot
+        # override the workspace path, scoped credentials, environment, or egress proxy.
+        if self.db:
+            try:
+                from uuid import UUID
+
+                from omoi_os.models.task import Task
+                from omoi_os.services.workspace_isolation_service import (
+                    WorkspaceIsolationError,
+                    WorkspaceIsolationService,
+                )
+
+                with self.db.get_session() as session:
+                    task = session.get(Task, task_id)
+                    execution_config = task.execution_config if task else None
+
+                if execution_config and execution_config.get("workspace_id"):
+                    from omoi_os.services.credential_broker import (
+                        CredentialBrokerService,
+                    )
+                    from omoi_os.services.environment_service import EnvironmentService
+
+                    workspace_id = UUID(str(execution_config["workspace_id"]))
+                    credential_ids = [
+                        UUID(str(binding_id))
+                        for binding_id in execution_config.get(
+                            "credential_binding_ids", []
+                        )
+                    ]
+                    environment_id = execution_config.get("environment_id")
+                    resolved_environment_id = (
+                        UUID(str(environment_id)) if environment_id else None
+                    )
+                    isolation_service = WorkspaceIsolationService(
+                        db=self.db,
+                        credential_broker=CredentialBrokerService(db=self.db),
+                        environment_service=EnvironmentService(db=self.db),
+                    )
+                    isolation_context = isolation_service.prepare_session_isolation(
+                        workspace_id=workspace_id,
+                        credential_binding_ids=credential_ids,
+                        environment_id=resolved_environment_id,
+                        actor=agent_id,
+                    )
+                    env_vars.update(isolation_context.execution_environment)
+                    logger.info(
+                        "[SPAWNER] Workspace isolation injected",
+                        extra={
+                            "task_id": task_id,
+                            "workspace_id": str(workspace_id),
+                            "storage_path": isolation_context.storage_path,
+                            "environment_variable_count": len(
+                                isolation_context.environment_variables
+                            ),
+                            "credential_variable_count": len(
+                                isolation_context.credential_environment_variables
+                            ),
+                            "egress_variable_count": len(
+                                isolation_context.egress_environment_variables
+                            ),
+                        },
+                    )
+            except WorkspaceIsolationError:
+                raise
+            except Exception as e:
+                logger.warning(
+                    "[SPAWNER] Workspace isolation skipped due to error",
+                    extra={"task_id": task_id, "error": str(e)},
+                )
+
         # Build labels
         sandbox_labels = {
             "project": "omoios",

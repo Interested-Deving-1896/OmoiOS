@@ -221,3 +221,51 @@ if settings.broker_enabled:
 - Artifacts: `POST /api/v1/artifacts/upload`, `GET /api/v1/artifacts`, `GET/DELETE /api/v1/artifacts/{id}`, `GET /api/v1/artifacts/{id}/download`
 - Webhooks: `POST/GET /api/v1/webhooks`, `DELETE /api/v1/webhooks/{id}`, `GET /api/v1/webhooks/{id}/deliveries`
 - Workspaces: `GET /api/v1/workspaces/{id}/settings`, `PUT /api/v1/workspaces/{id}/settings`
+
+## Task 11: TypeScript SDK Implementation - Learnings (2026-04-24)
+
+### Architecture
+- Replaced abstract `OmoiOSClient` with concrete fetch-based HTTP client using native `fetch` (Node.js 18+).
+- Resource-based design matching Python SDK: `client.credentials.list()`, `client.environments.get()`, etc.
+- Auth modes: `X-API-Key` header for API keys, `Authorization: Bearer` for JWT tokens.
+- Constructor requires `{ baseUrl, apiKey? | jwtToken? }` and strips trailing slashes.
+- Request timeout via `AbortController` with configurable milliseconds (default 30000).
+
+### Error Handling
+- Maps HTTP status codes to SDK exceptions: 401→AuthError, 404→NotFoundError, 400/422→ValidationError, 5xx→ServerError.
+- `_handleErrors` called automatically after every `_request`; throws on non-2xx status.
+
+### Type Updates
+- Added `GetEnvironmentResult` interface to `types.ts` (return type for `environments.get()`).
+- Added `UpdateWorkspaceSettingsRequest` interface to `types.ts`.
+- Added `config?: Record<string, unknown> | null` and `version?: number` to `Credential`.
+- Made `storage_path` optional on `Artifact` (backend `ArtifactResponse` omits it).
+
+### Resource Modules
+- `src/resources/credentials.ts`: list, get, create, delete
+- `src/resources/environments.ts`: list, get, create, create_version
+- `src/resources/artifacts.ts`: upload (FormData), list, get, download (Buffer), delete
+- `src/resources/webhooks.ts`: list, get, create, update, delete, list_deliveries, test
+- `src/resources/workspaces.ts`: get_settings, update_settings
+
+### Mock Client
+- Rewrote `MockOmoiOSClient` as standalone class (no longer extends `OmoiOSClient`).
+- Prevents constructor signature coupling between mock and real client.
+- Uses in-memory Maps for all resource types.
+
+### Testing
+- Integration tests (`tests/integration.test.ts`): 34 tests using local Node.js `http.createServer` mock.
+- Tests cover: initialization, auth headers, all resource methods, error handling (401/404/400/500/422), timeout abort.
+- Mock client tests (`tests/mockClient.test.ts`): 26 tests unchanged, still passing.
+- All 60 tests pass. TypeScript `strict` mode + `noUnusedLocals` + `noUnusedParameters` enforced.
+
+### Build Notes
+- `tsconfig.json`: `moduleResolution: Bundler` requires `.js` extensions in imports.
+- `Buffer` must be wrapped as `new Uint8Array(buffer)` before passing to `Blob` constructor to satisfy strict TypeScript types.
+- `FormData` from `undici` (Node.js 18+) works natively; no polyfill needed.
+- `package.json` uses `"type": "module"` with ES2022 + ESNext output.
+
+## 2026-04-23 — Workspace isolation service
+
+- Workspace isolation can be layered through `Task.execution_config` without storing decrypted secrets in JSONB: validate IDs at queue time, then resolve credentials/environment/proxy at sandbox spawn time.
+- Existing credential and environment services are synchronous DB services and can be composed directly by a workspace isolation service when tests inject shared `DatabaseService` instances.

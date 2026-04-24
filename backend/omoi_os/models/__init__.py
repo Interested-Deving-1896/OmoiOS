@@ -88,6 +88,7 @@ from omoi_os.models.workspace import (
     WorkspaceCommit,
     MergeConflictResolution,
 )
+from omoi_os.models.workspace_settings import WorkspaceSettings
 
 __all__ = [
     "Agent",
@@ -184,5 +185,6 @@ __all__ = [
     "Environment",
     "EnvironmentVersion",
     "WorkspaceCommit",
+    "WorkspaceSettings",
     "MergeConflictResolution",
 ]

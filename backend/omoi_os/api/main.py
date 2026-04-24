@@ -71,6 +71,7 @@ from omoi_os.api.routes import (
     validation,
     watchdog,
     webhooks,
+    workspace_isolation,
 )
 from omoi_os.services.agent_health import AgentHealthService
 from omoi_os.services.agent_registry import AgentRegistryService
@@ -111,7 +112,9 @@ llm_service = None  # Unified LLM service  # Defined below in lifespan
 validation_orchestrator = None  # Defined below in lifespan
 ticket_workflow_orchestrator = None  # Defined below in lifespan
 monitoring_loop = None  # Intelligent monitoring loop  # Defined below in lifespan
-session_agent_config_restorer: SessionAgentConfigRestorer | None = None  # Session restoration after compaction
+session_agent_config_restorer: SessionAgentConfigRestorer | None = (
+    None  # Session restoration after compaction
+)
 
 
 async def orchestrator_loop():
@@ -1243,12 +1246,23 @@ app.include_router(artifacts.router, prefix="/api/v1/artifacts", tags=["artifact
 # Environment routes (versioned environment configs)
 from omoi_os.api.routes import environments
 
-app.include_router(environments.router, prefix="/api/v1/environments", tags=["environments"])
+app.include_router(
+    environments.router, prefix="/api/v1/environments", tags=["environments"]
+)
 
 # Credential Broker routes (encrypted per-workspace credentials)
 from omoi_os.api.routes import credentials_broker
 
-app.include_router(credentials_broker.router, prefix="/api/v1/credentials", tags=["credentials"])
+app.include_router(
+    credentials_broker.router, prefix="/api/v1/credentials", tags=["credentials"]
+)
+
+# Workspace isolation routes (file, credential, environment, and egress boundaries)
+app.include_router(
+    workspace_isolation.router,
+    prefix="/api/v1/workspace-isolation",
+    tags=["workspace-isolation"],
+)
 
 # Mount FastMCP server at /mcp
 app.mount("/mcp", mcp_app)

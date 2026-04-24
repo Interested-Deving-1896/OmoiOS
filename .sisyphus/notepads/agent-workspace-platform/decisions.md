@@ -37,3 +37,8 @@
 - **Decision**: Route aliases only, no DB column renames
 - **Rationale**: Backward compatibility, no migration risk
 - **Deprecation**: `X-Deprecated` header on all `/sessions` responses
+
+## 2026-04-23 — Workspace isolation boundaries
+
+- Store only non-secret workspace isolation settings (`storage_path`, `environment_id`, `egress_proxy_config`) in `workspace_settings`; decrypted environment values and credentials are resolved only at sandbox spawn time.
+- Require explicit `credential_binding_ids` for session credential injection to avoid implicitly injecting every workspace credential.

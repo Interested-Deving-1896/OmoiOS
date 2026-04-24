@@ -16,7 +16,9 @@
     "ses_242f3a325ffeOVWlFdM08HbYDC",
     "ses_242f3905effeBMAk2vPysAmYvT",
     "ses_242f37a4effeiJLnPJIBkQ5DJr",
-    "ses_242dbfb61ffeSqa0TqzXh0MPXx"
+    "ses_242dbfb61ffeSqa0TqzXh0MPXx",
+    "ses_242dbf0f5ffecgqJDJ7BRQE1e3",
+    "ses_242d25ba8ffe0CiVw1ekB85fsC"
   ],
   "plan_name": "agent-workspace-platform",
   "agent": "atlas",
@@ -56,6 +58,15 @@
       "agent": "Sisyphus-Junior",
       "category": "quick",
       "updated_at": "2026-04-24T01:43:42.668Z"
+    },
+    "todo:10": {
+      "task_key": "todo:10",
+      "task_label": "10",
+      "task_title": "**Workspace Isolation Layer (PR-6)**",
+      "session_id": "ses_242d26f2bffeF1UQd0Mj8OVEDQ",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-24T02:19:33.960Z"
     }
   }
 }

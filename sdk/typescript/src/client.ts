@@ -1,195 +1,183 @@
+import {
+  AuthError,
+  NotFoundError,
+  ServerError,
+  ValidationError,
+} from './errors.js';
+import {
+  ArtifactsResource,
+  CredentialsResource,
+  EnvironmentsResource,
+  WebhooksResource,
+  WorkspacesResource,
+} from './resources/index.js';
+
 /**
- * Abstract base client for OmoiOS API.
+ * Options for the OmoiOS HTTP client.
  */
-
-import type {
-  Artifact,
-  CreateCredentialRequest,
-  CreateEnvironmentRequest,
-  CreateEnvironmentVersionRequest,
-  CreateWebhookRequest,
-  Credential,
-  Environment,
-  EnvironmentVersion,
-  WebhookDelivery,
-  WebhookSubscription,
-  WorkspaceSettings,
-} from './types.js';
-
-/** Result of getEnvironment call. */
-export interface GetEnvironmentResult {
-  environment: Environment;
-  latestVersion: EnvironmentVersion | null;
+export interface OmoiOSClientOptions {
+  /** API base URL (e.g., "https://api.omoios.dev") */
+  baseUrl: string;
+  /** API key for authentication (X-API-Key header) */
+  apiKey?: string;
+  /** JWT token for authentication (Authorization: Bearer header) */
+  jwtToken?: string;
+  /** HTTP request timeout in milliseconds (default: 30000) */
+  timeout?: number;
 }
 
 /**
- * Abstract base class for OmoiOS API clients.
+ * HTTP client for the OmoiOS Agent Workspace Platform.
  *
- * Implementations must provide concrete methods for all API operations.
- * This base class defines the interface for both real and mock clients.
+ * Uses native fetch (Node.js 18+) for HTTP requests. Supports both API key
+ * and JWT token authentication.
+ *
+ * @example
+ * const client = new OmoiOSClient({
+ *   baseUrl: 'https://api.omoios.dev',
+ *   apiKey: 'your-api-key',
+ * });
+ * const creds = await client.credentials.list('ws-1');
+ * console.log(creds[0].name);
  */
-export abstract class OmoiOSClient {
+export class OmoiOSClient {
   /** API base URL */
-  protected readonly baseUrl: string;
-  /** Optional API key for authentication */
-  protected readonly apiKey?: string;
+  readonly baseUrl: string;
+  /** Optional API key */
+  readonly apiKey: string | undefined;
+  /** Optional JWT token */
+  readonly jwtToken: string | undefined;
+  /** Request timeout in milliseconds */
+  readonly timeout: number;
+
+  /** Credentials resource */
+  readonly credentials: CredentialsResource;
+  /** Environments resource */
+  readonly environments: EnvironmentsResource;
+  /** Artifacts resource */
+  readonly artifacts: ArtifactsResource;
+  /** Webhooks resource */
+  readonly webhooks: WebhooksResource;
+  /** Workspaces resource */
+  readonly workspaces: WorkspacesResource;
 
   /**
    * Initialize the client.
-   * @param baseUrl - API base URL
-   * @param apiKey - Optional API key for authentication
+   *
+   * @param options - Client configuration options
+   * @throws {Error} If neither apiKey nor jwtToken is provided
    */
-  constructor(baseUrl: string, apiKey?: string) {
-    this.baseUrl = baseUrl;
-    this.apiKey = apiKey;
+  constructor(options: OmoiOSClientOptions) {
+    if (!options.apiKey && !options.jwtToken) {
+      throw new Error('Either apiKey or jwtToken must be provided');
+    }
+
+    this.baseUrl = options.baseUrl.replace(/\/$/, '');
+    this.apiKey = options.apiKey;
+    this.jwtToken = options.jwtToken;
+    this.timeout = options.timeout ?? 30000;
+
+    this.credentials = new CredentialsResource(this);
+    this.environments = new EnvironmentsResource(this);
+    this.artifacts = new ArtifactsResource(this);
+    this.webhooks = new WebhooksResource(this);
+    this.workspaces = new WorkspacesResource(this);
   }
 
-  // Credentials
+  /**
+   * Build request headers with authentication.
+   *
+   * @returns HTTP headers object
+   */
+  private _headers(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    if (this.apiKey) {
+      headers['X-API-Key'] = this.apiKey;
+    } else if (this.jwtToken) {
+      headers['Authorization'] = `Bearer ${this.jwtToken}`;
+    }
+    return headers;
+  }
 
   /**
-   * List credentials.
-   * @param workspaceId - Optional workspace ID to filter by
-   * @returns List of credentials
+   * Map HTTP error status codes to SDK exceptions.
+   *
+   * @param response - fetch Response object
+   * @throws {AuthError} For 401 responses
+   * @throws {NotFoundError} For 404 responses
+   * @throws {ValidationError} For 400/422 responses
+   * @throws {ServerError} For 5xx responses
    */
-  abstract listCredentials(workspaceId?: string): Credential[];
+  private _handleErrors(response: Response): void {
+    if (response.ok) {
+      return;
+    }
+
+    if (response.status === 401) {
+      throw new AuthError('Authentication failed');
+    }
+    if (response.status === 404) {
+      throw new NotFoundError('Resource not found');
+    }
+    if (response.status === 400 || response.status === 422) {
+      throw new ValidationError('Validation failed');
+    }
+    if (response.status >= 500) {
+      throw new ServerError('Server error');
+    }
+
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
 
   /**
-   * Get a credential by ID.
-   * @param credentialId - Credential ID
-   * @returns Credential object
-   * @throws {NotFoundError} If credential doesn't exist
+   * Make an authenticated HTTP request.
+   *
+   * @param method - HTTP method (GET, POST, PUT, PATCH, DELETE)
+   * @param path - API path (e.g., "/api/v1/credentials")
+   * @param options - Request options
+   * @returns fetch Response object
+   * @throws {AuthError, NotFoundError, ValidationError, ServerError}
    */
-  abstract getCredential(credentialId: string): Credential;
+  async _request(
+    method: string,
+    path: string,
+    options: {
+      searchParams?: Record<string, string>;
+      body?: BodyInit;
+      headers?: Record<string, string>;
+    } = {}
+  ): Promise<Response> {
+    const url = new URL(path, this.baseUrl);
+    if (options.searchParams) {
+      for (const [key, value] of Object.entries(options.searchParams)) {
+        url.searchParams.set(key, value);
+      }
+    }
 
-  /**
-   * Create a new credential.
-   * @param request - Create credential request
-   * @returns Created credential
-   */
-  abstract createCredential(request: CreateCredentialRequest): Credential;
+    const headers: Record<string, string> = {
+      ...this._headers(),
+      ...options.headers,
+    };
 
-  /**
-   * Delete a credential.
-   * @param credentialId - Credential ID to delete
-   * @throws {NotFoundError} If credential doesn't exist
-   */
-  abstract deleteCredential(credentialId: string): void;
+    if (options.body && typeof options.body === 'string') {
+      headers['Content-Type'] = 'application/json';
+    }
 
-  // Environments
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-  /**
-   * List all environments.
-   * @returns List of environments
-   */
-  abstract listEnvironments(): Environment[];
+    try {
+      const response = await fetch(url.toString(), {
+        method,
+        headers,
+        body: options.body,
+        signal: controller.signal,
+      });
 
-  /**
-   * Get environment with latest version.
-   * @param environmentId - Environment ID
-   * @returns Object with environment and latestVersion
-   * @throws {NotFoundError} If environment doesn't exist
-   */
-  abstract getEnvironment(environmentId: string): GetEnvironmentResult;
-
-  /**
-   * Create a new environment.
-   * @param request - Create environment request
-   * @returns Created environment
-   */
-  abstract createEnvironment(request: CreateEnvironmentRequest): Environment;
-
-  /**
-   * Create a new environment version.
-   * @param environmentId - Environment ID
-   * @param request - Create version request
-   * @returns Created environment version
-   * @throws {NotFoundError} If environment doesn't exist
-   */
-  abstract createEnvironmentVersion(
-    environmentId: string,
-    request: CreateEnvironmentVersionRequest
-  ): EnvironmentVersion;
-
-  // Artifacts
-
-  /**
-   * Upload an artifact.
-   * @param fileContent - Raw file bytes
-   * @param workspaceId - Optional workspace ID
-   * @returns Created artifact
-   */
-  abstract uploadArtifact(
-    fileContent: Buffer,
-    workspaceId?: string
-  ): Artifact;
-
-  /**
-   * List artifacts.
-   * @param workspaceId - Optional workspace ID to filter by
-   * @returns List of artifacts
-   */
-  abstract listArtifacts(workspaceId?: string): Artifact[];
-
-  /**
-   * Get an artifact by ID.
-   * @param artifactId - Artifact ID
-   * @returns Artifact object
-   * @throws {NotFoundError} If artifact doesn't exist
-   */
-  abstract getArtifact(artifactId: string): Artifact;
-
-  /**
-   * Download artifact content.
-   * @param artifactId - Artifact ID
-   * @returns Raw file bytes
-   * @throws {NotFoundError} If artifact doesn't exist
-   */
-  abstract downloadArtifact(artifactId: string): Buffer;
-
-  /**
-   * Delete an artifact.
-   * @param artifactId - Artifact ID to delete
-   * @throws {NotFoundError} If artifact doesn't exist
-   */
-  abstract deleteArtifact(artifactId: string): void;
-
-  // Webhooks
-
-  /**
-   * List webhook subscriptions.
-   * @returns List of webhook subscriptions
-   */
-  abstract listWebhooks(): WebhookSubscription[];
-
-  /**
-   * Create a webhook subscription.
-   * @param request - Create webhook request
-   * @returns Created webhook subscription
-   */
-  abstract createWebhook(request: CreateWebhookRequest): WebhookSubscription;
-
-  /**
-   * Delete a webhook subscription.
-   * @param webhookId - Webhook ID to delete
-   * @throws {NotFoundError} If webhook doesn't exist
-   */
-  abstract deleteWebhook(webhookId: string): void;
-
-  /**
-   * List webhook deliveries for a subscription.
-   * @param subscriptionId - Subscription ID
-   * @returns List of webhook deliveries
-   * @throws {NotFoundError} If subscription doesn't exist
-   */
-  abstract listWebhookDeliveries(subscriptionId: string): WebhookDelivery[];
-
-  // Workspace Settings
-
-  /**
-   * Get workspace settings.
-   * @param workspaceId - Workspace ID
-   * @returns Workspace settings
-   * @throws {NotFoundError} If workspace doesn't exist
-   */
-  abstract getWorkspaceSettings(workspaceId: string): WorkspaceSettings;
+      this._handleErrors(response);
+      return response;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
 }

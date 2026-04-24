@@ -98,3 +98,7 @@ When creating a new migration:
 2. Set `down_revision = "<current_head>"` in your migration file
 3. Apply locally with `uv run alembic upgrade head` to verify
 4. Test reversibility: `uv run alembic downgrade -1 && uv run alembic upgrade head`
+
+## 2026-04-23 — Verification note
+
+- `just test-unit` did not finish within two verification attempts in this environment (timed out at ~57% after 10 minutes); targeted `tests/unit/test_workspace_isolation.py` passed.

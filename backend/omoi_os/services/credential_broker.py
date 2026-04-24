@@ -144,8 +144,7 @@ class CredentialBrokerService:
         # Validate kind
         if kind not in VALID_BINDING_KINDS:
             raise InvalidBindingKindError(
-                f"Invalid binding kind '{kind}'. "
-                f"Must be one of: {VALID_BINDING_KINDS}"
+                f"Invalid binding kind '{kind}'. Must be one of: {VALID_BINDING_KINDS}"
             )
 
         # Get encryption service
@@ -404,6 +403,89 @@ class CredentialBrokerService:
                 workspace_id=str(workspace_id),
                 count=len(bindings),
             )
+
+            return result
+
+    def inject_credentials_by_ids(
+        self,
+        workspace_id: UUID,
+        binding_ids: list[UUID],
+        actor: Optional[str] = None,
+    ) -> dict[str, str]:
+        """Get selected decrypted workspace credentials for sandbox injection.
+
+        Args:
+            workspace_id: Workspace ID that must own every requested credential
+            binding_ids: Credential binding IDs to inject
+            actor: Optional user ID or agent ID for audit log
+
+        Returns:
+            Dictionary of {env_var_name: decrypted_value}
+
+        Raises:
+            CredentialNotFoundError: If a requested binding is missing or out of scope
+            CredentialBrokerError: If decryption fails
+        """
+        if not binding_ids:
+            return {}
+
+        db = self._get_db()
+        encryption = self._get_encryption()
+
+        if not encryption.is_configured:
+            raise CredentialBrokerError(
+                "Credential encryption is not configured. "
+                "Set CREDENTIAL_ENCRYPTION_KEY environment variable."
+            )
+
+        requested_ids = set(binding_ids)
+        with db.get_session() as session:
+            bindings = (
+                session.query(CredentialBinding)
+                .filter(
+                    CredentialBinding.workspace_id == workspace_id,
+                    CredentialBinding.id.in_(requested_ids),
+                )
+                .all()
+            )
+            found_ids = {binding.id for binding in bindings}
+            missing_ids = requested_ids - found_ids
+            if missing_ids:
+                raise CredentialNotFoundError(
+                    "Credential binding not found in requested workspace"
+                )
+
+            result = {}
+            for binding in bindings:
+                try:
+                    decrypted_value = encryption.decrypt(binding.encrypted_value)
+                except Exception as e:
+                    logger.error(
+                        "Failed to decrypt credential",
+                        binding_id=str(binding.id),
+                        error=str(e),
+                    )
+                    raise CredentialBrokerError(
+                        f"Failed to decrypt credential '{binding.name}'"
+                    ) from e
+
+                safe_name = "".join(
+                    c if c.isalnum() else "_" for c in binding.name
+                ).upper()
+                env_var_name = f"OMOIOS_CRED_{binding.kind.upper()}_{safe_name}"
+                result[env_var_name] = decrypted_value
+
+                self._write_access_log(
+                    workspace_id=workspace_id,
+                    action="inject",
+                    credential_binding_id=binding.id,
+                    actor=actor,
+                    access_metadata={
+                        "kind": binding.kind,
+                        "name": binding.name,
+                        "env_var": env_var_name,
+                    },
+                )
 
             return result
 

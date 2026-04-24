@@ -19,11 +19,24 @@ export type {
   WebhookDelivery,
   CreateWebhookRequest,
   WorkspaceSettings,
+  UpdateWorkspaceSettingsRequest,
+  GetEnvironmentResult,
 } from './types.js';
 
 // Client
 export { OmoiOSClient } from './client.js';
+export type { OmoiOSClientOptions } from './client.js';
 export { MockOmoiOSClient } from './mockClient.js';
+
+// Resources
+export {
+  ArtifactsResource,
+  BaseResource,
+  CredentialsResource,
+  EnvironmentsResource,
+  WebhooksResource,
+  WorkspacesResource,
+} from './resources/index.js';
 
 // Errors
 export {

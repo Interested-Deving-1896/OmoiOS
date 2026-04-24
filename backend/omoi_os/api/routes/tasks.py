@@ -1,6 +1,7 @@
 """Task API routes."""
 
 from typing import List, Optional, Dict, Any
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Depends, Body
 from pydantic import BaseModel
@@ -546,6 +547,50 @@ class ExecutionConfig(BaseModel):
 
     require_spec_skill: bool = False  # Force spec-driven-dev skill usage
     selected_skill: Optional[str] = None  # Skill name selected from frontend dropdown
+    workspace_id: Optional[UUID] = None  # Workspace isolation boundary
+    credential_binding_ids: Optional[list[UUID]] = (
+        None  # Requested workspace credentials
+    )
+    environment_id: Optional[UUID] = None  # Workspace environment override
+
+
+def _validate_workspace_isolation_config(
+    execution_config: Optional[ExecutionConfig],
+    current_user: User,
+    db: DatabaseService,
+) -> None:
+    """Validate workspace isolation settings before a task/session is queued."""
+    if execution_config is None or execution_config.workspace_id is None:
+        return
+
+    from omoi_os.services.workspace_isolation_service import (
+        CrossWorkspaceCredentialError,
+        WorkspaceIsolationFeatureDisabledError,
+    )
+
+    try:
+        from omoi_os.services.workspace_isolation_service import (
+            WorkspaceIsolationService,
+        )
+        from omoi_os.services.credential_broker import CredentialBrokerService
+
+        service = WorkspaceIsolationService(
+            db=db,
+            credential_broker=CredentialBrokerService(db=db),
+        )
+        service.get_or_create_settings(
+            workspace_id=execution_config.workspace_id,
+            environment_id=execution_config.environment_id,
+        )
+        service.validate_credential_access(
+            workspace_id=execution_config.workspace_id,
+            credential_binding_ids=execution_config.credential_binding_ids,
+            actor=str(current_user.id),
+        )
+    except WorkspaceIsolationFeatureDisabledError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CrossWorkspaceCredentialError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 class TaskCreate(BaseModel):
@@ -586,6 +631,7 @@ async def create_task(
     """
     # Verify user has access to the ticket this task will belong to
     await verify_ticket_access(task_data.ticket_id, current_user, db)
+    _validate_workspace_isolation_config(task_data.execution_config, current_user, db)
 
     try:
         # Convert execution_config to dict for JSONB storage

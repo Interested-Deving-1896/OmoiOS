@@ -668,7 +668,7 @@ Max Concurrent: 3 (Waves 2, 4, 5)
   - Message: `feat: add Go egress proxy with hostname allowlists`
   - Pre-commit: `cd egress-proxy && go test ./...`
 
-- [ ] 8. **Webhook Delivery Service (PR-5)**
+- [x] 8. **Webhook Delivery Service (PR-5)**
 
   **What to do**:
   - Write failing tests for webhook delivery lifecycle
@@ -726,7 +726,7 @@ Max Concurrent: 3 (Waves 2, 4, 5)
   - Message: `feat: add webhook delivery with HMAC signatures and retry logic`
   - Pre-commit: `just test-unit`
 
-- [ ] 9. **Python SDK Implementation**
+- [x] 9. **Python SDK Implementation**
 
   **What to do**:
   - Write failing tests for each SDK method
@@ -778,7 +778,7 @@ Max Concurrent: 3 (Waves 2, 4, 5)
   - Message: `feat: implement Python SDK with full API coverage`
   - Pre-commit: `cd sdk/python && uv run pytest`
 
-- [ ] 10. **Workspace Isolation Layer (PR-6)**
+- [x] 10. **Workspace Isolation Layer (PR-6)**
 
   **What to do**:
   - Write failing tests for workspace isolation guarantees
@@ -912,7 +912,7 @@ Max Concurrent: 3 (Waves 2, 4, 5)
   - Message: `feat: implement TypeScript SDK with full API coverage`
   - Pre-commit: `cd sdk/typescript && pnpm test`
 
-- [ ] 12. **API Route Aliases (sessions → tasks)**
+- [x] 12. **API Route Aliases (sessions → tasks)**
 
   **What to do**:
   - Write failing tests for route alias behavior
