@@ -167,3 +167,18 @@ if settings.broker_enabled:
 - Error cases verified (NotFoundError on invalid IDs)
 - Type validation through runtime assertions
 - Mock data fixtures provide realistic test scenarios
+
+## Task 7: Go Egress Proxy - Learnings (2026-04-24)
+
+### Implementation Patterns
+- Created standalone `egress-proxy/` Go module with no third-party dependencies for a minimal static binary and scratch Docker image.
+- HTTP proxy requests use absolute-form URLs and `http.Transport{Proxy:nil}` so the proxy never loops through environment proxy settings.
+- HTTPS support uses standard CONNECT authority filtering before TCP tunneling; TLS is not terminated, preserving end-to-end encryption.
+- Allowlist supports exact lowercase hostnames and `*.domain` suffix entries; empty allowlist fails closed.
+- `/health` and `/metrics` are served only for direct origin-form requests, while proxy traffic is counted separately.
+
+### Verification Notes
+- `go test ./...` passes.
+- `go build -o /tmp/egress-proxy-check .` passes.
+- QA evidence saved at `.sisyphus/evidence/task-7-egress-filter.txt` shows blocked `evil.example.com`, allowed `api.github.com`, health, and metrics.
+- Dockerfile is multi-stage and scratch-based; local Docker build could not be completed because the Docker daemon was unavailable in the execution environment.
