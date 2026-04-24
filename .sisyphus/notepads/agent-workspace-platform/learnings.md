@@ -182,3 +182,42 @@ if settings.broker_enabled:
 - `go build -o /tmp/egress-proxy-check .` passes.
 - QA evidence saved at `.sisyphus/evidence/task-7-egress-filter.txt` shows blocked `evil.example.com`, allowed `api.github.com`, health, and metrics.
 - Dockerfile is multi-stage and scratch-based; local Docker build could not be completed because the Docker daemon was unavailable in the execution environment.
+
+## Task 9: Python SDK Implementation - Learnings (2026-04-24)
+
+### Architecture
+- Implemented `AsyncOmoiOSClient` using `httpx.AsyncClient` for async HTTP requests.
+- Preserved `OmoiOSClient` abstract base class for backwards compatibility with `MockOmoiOSClient`.
+- Resource-based design: `client.credentials.list()`, `client.environments.get()`, etc.
+- Auth modes: `X-API-Key` header for API keys, `Authorization: Bearer` for JWT tokens.
+
+### Error Handling
+- Maps HTTP status codes to SDK exceptions: 401→AuthError, 404→NotFoundError, 400/422→ValidationError, 5xx→ServerError.
+- Errors include detail messages parsed from JSON response bodies.
+
+### Type Updates
+- Added `config: Optional[dict]` and `version: int` to `Credential` model.
+- Added `config: Optional[dict]` to `CreateCredentialRequest`.
+- Made `workspace_id` required in `CreateCredentialRequest` (was optional in mock).
+- Made `org_id` required in `CreateEnvironmentRequest` (was optional in mock).
+- Added `UpdateWorkspaceSettingsRequest` for workspace settings updates.
+
+### Resource Modules
+- `omoios/resources/credentials.py`: list, get, create, delete
+- `omoios/resources/environments.py`: list, get, create, create_version
+- `omoios/resources/artifacts.py`: upload, list, get, download, delete
+- `omoios/resources/webhooks.py`: list, create, delete, list_deliveries
+- `omoios/resources/workspaces.py`: get_settings, update_settings
+
+### Testing
+- Unit tests (`tests/test_client.py`): 26 tests with mocked HTTP via `unittest.mock.AsyncMock`.
+- Mock tests (`tests/test_mock_client.py`): 26 tests for mock client compatibility.
+- Integration tests (`tests/test_integration.py`): 16 tests that skip if API unavailable.
+- All 52 unit tests pass. Integration tests skip when backend is not running.
+
+### API Endpoints Covered
+- Credentials: `POST/GET/DELETE /api/v1/credentials`, `GET /api/v1/credentials/{id}`
+- Environments: `POST/GET /api/v1/environments`, `GET /api/v1/environments/{id}`, `POST /api/v1/environments/{id}/versions`
+- Artifacts: `POST /api/v1/artifacts/upload`, `GET /api/v1/artifacts`, `GET/DELETE /api/v1/artifacts/{id}`, `GET /api/v1/artifacts/{id}/download`
+- Webhooks: `POST/GET /api/v1/webhooks`, `DELETE /api/v1/webhooks/{id}`, `GET /api/v1/webhooks/{id}/deliveries`
+- Workspaces: `GET /api/v1/workspaces/{id}/settings`, `PUT /api/v1/workspaces/{id}/settings`
