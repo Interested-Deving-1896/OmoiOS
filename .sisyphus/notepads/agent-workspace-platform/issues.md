@@ -40,3 +40,61 @@
 - Must save evidence to `.sisyphus/evidence/`
 - Must test both happy path and error cases
 - Must verify feature flags guard all new routes
+
+## DetachedInstanceError (CRITICAL — Wave 2 bug)
+
+**Problem**: SQLAlchemy ORM objects returned from a service method after `with db.get_session() as session:` closes become **detached**. Any attribute access (`.id`, `.name`) triggers an expired-attribute reload → `DetachedInstanceError`.
+
+**Symptom**: Tests fail with `sqlalchemy.orm.exc.DetachedInstanceError: Instance <X at 0xABC> is not bound to a Session; attribute refresh operation cannot proceed`.
+
+**Fix**: Before `return` in any service method returning ORM objects:
+```python
+with db.get_session() as session:
+    obj = session.query(...).first()  # or session.add(...); session.commit(); session.refresh(obj)
+    session.expunge(obj)   # <-- REQUIRED before the block exits
+    return obj
+
+# For lists:
+    items = session.query(...).all()
+    for item in items:
+        session.expunge(item)
+    return items
+```
+
+Seen in: `environment_service.py`, `artifact_service.py` (both fixed in commit fcf5b92c).
+Reference implementation: `backend/omoi_os/services/environment_service.py` lines 105-117, 132-141, 162-176, 285-299.
+
+## Service DB construction pattern
+
+There is no `get_database_service()` global. Services must lazily construct their own:
+```python
+def _get_db(self) -> DatabaseService:
+    if self._db is None:
+        from omoi_os.config import get_app_settings
+        from omoi_os.services.database import DatabaseService
+        settings = get_app_settings()
+        self._db = DatabaseService(connection_string=settings.database.url)
+    return self._db
+```
+Constructor allows injecting a DB for tests: `def __init__(self, db=None, encryption=None)`.
+
+## Migration chain discipline
+
+The migration chain (as of commit fcf5b92c):
+```
+060_add_spec_share_fields
+  ↓
+061_add_encrypted_api_key
+  ↓
+062_add_environments
+  ↓
+063_add_artifacts
+  ↓
+064_... (next Wave 3+)
+```
+
+When creating a new migration:
+1. Read the CURRENT head: `uv run alembic heads`
+2. Set `down_revision = "<current_head>"` in your migration file
+3. Apply locally with `uv run alembic upgrade head` to verify
+4. Test reversibility: `uv run alembic downgrade -1 && uv run alembic upgrade head`

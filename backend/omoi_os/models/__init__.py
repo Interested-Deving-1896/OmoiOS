@@ -12,6 +12,8 @@ from omoi_os.models.agent_message import AgentMessage, CollaborationThread
 from omoi_os.models.agent_result import AgentResult
 from omoi_os.models.auth import Session, APIKey
 from omoi_os.models.base import Base
+from omoi_os.models.artifact import Artifact
+from omoi_os.models.environment import Environment, EnvironmentVersion
 from omoi_os.models.billing import (
     BillingAccount,
     BillingAccountStatus,
@@ -178,6 +180,9 @@ __all__ = [
     "ValidationReview",
     "WorkflowResult",
     "AgentWorkspace",
+    "Artifact",
+    "Environment",
+    "EnvironmentVersion",
     "WorkspaceCommit",
     "MergeConflictResolution",
 ]

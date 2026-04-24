@@ -70,45 +70,6 @@ from omoi_os.api.routes import (
     validation,
     watchdog,
 )
-    artifacts,
-    agents,
-    alerts,
-    analytics_proxy,
-    auth,
-    billing,
-    board,
-    branch_workflow,
-    collaboration,
-    commits,
-    costs,
-    debug,
-    diagnostic,
-    events,
-    explore,
-    github,
-    github_repos,
-    graph,
-    guardian,
-    memory,
-    mcp,
-    oauth,
-    onboarding,
-    organizations,
-    phases,
-    preview,
-    projects,
-    prototype,
-    public,
-    quality,
-    reasoning,
-    results,
-    sandbox,
-    specs,
-    tasks,
-    tickets,
-    validation,
-    watchdog,
-)
 from omoi_os.services.agent_health import AgentHealthService
 from omoi_os.services.agent_registry import AgentRegistryService
 from omoi_os.services.agent_status_manager import AgentStatusManager
@@ -1278,7 +1239,7 @@ app.include_router(artifacts.router, prefix="/api/v1/artifacts", tags=["artifact
 from omoi_os.api.routes import environments
 
 app.include_router(environments.router, prefix="/api/v1/environments", tags=["environments"])
-app.include_router(artifacts.router, prefix="/api/v1/artifacts", tags=["artifacts"])
+
 # Mount FastMCP server at /mcp
 app.mount("/mcp", mcp_app)
 
