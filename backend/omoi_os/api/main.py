@@ -1240,6 +1240,11 @@ from omoi_os.api.routes import environments
 
 app.include_router(environments.router, prefix="/api/v1/environments", tags=["environments"])
 
+# Credential Broker routes (encrypted per-workspace credentials)
+from omoi_os.api.routes import credentials_broker
+
+app.include_router(credentials_broker.router, prefix="/api/v1/credentials", tags=["credentials"])
+
 # Mount FastMCP server at /mcp
 app.mount("/mcp", mcp_app)
 

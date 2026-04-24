@@ -334,7 +334,7 @@ Max Concurrent: 3 (Waves 2, 4, 5)
   - Files: `backend/config/base.yaml`, `backend/omoi_os/config.py`, test file
   - Pre-commit: `just test-unit`
 
-- [ ] 3. **Credential Broker Service (PR-4 · lines 444–566)**
+- [x] 3. **Credential Broker Service (PR-4 · lines 444–566)**
 
   **What to do**:
   - Write failing tests for credential CRUD with 3 binding kinds
@@ -425,7 +425,7 @@ Max Concurrent: 3 (Waves 2, 4, 5)
   - Files: `backend/omoi_os/services/credential_broker.py`, routes, models, migration, tests
   - Pre-commit: `just test-unit`
 
-- [ ] 4. **Environment Resource + DB Migration (PR-3)**
+- [x] 4. **Environment Resource + DB Migration (PR-3)**
 
   **What to do**:
   - Write failing tests for Environment CRUD
@@ -491,7 +491,7 @@ Max Concurrent: 3 (Waves 2, 4, 5)
   - Message: `feat: add environment resource with versioned immutable configs`
   - Pre-commit: `just test-unit`
 
-- [ ] 5. **Unified Artifact Model (PR-4)**
+- [x] 5. **Unified Artifact Model (PR-4)**
 
   **What to do**:
   - Write failing tests for artifact upload/download/delete
@@ -548,7 +548,7 @@ Max Concurrent: 3 (Waves 2, 4, 5)
   - Message: `feat: add unified artifact model with multi-backend storage`
   - Pre-commit: `just test-unit`
 
-- [ ] 6. **SDK Scaffolding + API Type Definitions (PR-7 prep)**
+- [x] 6. **SDK Scaffolding + API Type Definitions (PR-7 prep)**
 
   **What to do**:
   - Create `sdk/python/omoios/` package structure
