@@ -64,6 +64,7 @@ from omoi_os.api.routes import (
     reasoning,
     results,
     sandbox,
+    sessions,
     specs,
     tasks,
     tickets,
@@ -1169,6 +1170,9 @@ async def security_headers_middleware(request: Request, call_next):
 # Include routers
 app.include_router(tickets.router, prefix="/api/v1/tickets", tags=["tickets"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
+
+# Sessions API (deprecated aliases for tasks, guarded by feature flag)
+app.include_router(sessions.router, prefix="/api/v1/sessions", tags=["sessions"])
 app.include_router(phases.router, prefix="/api/v1", tags=["phases"])
 app.include_router(agents.router, prefix="/api/v1", tags=["agents"])
 app.include_router(collaboration.router, prefix="/api/v1", tags=["collaboration"])
