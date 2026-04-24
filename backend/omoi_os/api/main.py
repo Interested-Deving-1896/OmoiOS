@@ -69,6 +69,7 @@ from omoi_os.api.routes import (
     tickets,
     validation,
     watchdog,
+    webhooks,
 )
 from omoi_os.services.agent_health import AgentHealthService
 from omoi_os.services.agent_registry import AgentRegistryService
@@ -1255,6 +1256,9 @@ try:
     app.include_router(monitor.router, prefix="/api/v1", tags=["monitoring"])
 except ImportError:
     pass
+
+# Include webhooks router (endpoints guarded by feature flag)
+app.include_router(webhooks.router, prefix="/api/v1/webhooks", tags=["webhooks"])
 
 # Mount static files for web UI
 static_dir = Path(__file__).parent.parent.parent / "static"

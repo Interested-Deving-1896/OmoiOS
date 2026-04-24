@@ -77,6 +77,7 @@ class TestMockClientCredentials:
 
         # First create a credential
         request = CreateCredentialRequest(
+            workspace_id="ws_1",
             kind=BindingKind.BEARER_SECRET,
             name="to-delete",
             value="secret",
@@ -126,6 +127,7 @@ class TestMockClientEnvironments:
         request = CreateEnvironmentRequest(
             name="production",
             description="Production environment",
+            org_id="org_1",
         )
         env = client.create_environment(request)
 
@@ -139,7 +141,7 @@ class TestMockClientEnvironments:
         client = MockOmoiOSClient()
 
         # Create environment first
-        env_request = CreateEnvironmentRequest(name="test-env")
+        env_request = CreateEnvironmentRequest(name="test-env", org_id="org_1")
         env = client.create_environment(env_request)
 
         # Create version
@@ -161,7 +163,7 @@ class TestMockClientEnvironments:
         client = MockOmoiOSClient()
 
         # Create environment
-        env = client.create_environment(CreateEnvironmentRequest(name="versioned-env"))
+        env = client.create_environment(CreateEnvironmentRequest(name="versioned-env", org_id="org_1"))
 
         # Create two versions
         v1 = client.create_environment_version(

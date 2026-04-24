@@ -16,10 +16,11 @@ from omoios.types import (
     WebhookDelivery,
     CreateWebhookRequest,
     WorkspaceSettings,
+    UpdateWorkspaceSettingsRequest,
 )
-from omoios.client import OmoiOSClient
+from omoios.client import OmoiOSClient, AsyncOmoiOSClient
 from omoios.mock_client import MockOmoiOSClient
-from omoios.exceptions import OmoiOSError, AuthError, NotFoundError, ValidationError
+from omoios.exceptions import OmoiOSError, AuthError, NotFoundError, ValidationError, ServerError
 
 __version__ = "0.1.0"
 __all__ = [
@@ -39,12 +40,15 @@ __all__ = [
     "WebhookDelivery",
     "CreateWebhookRequest",
     "WorkspaceSettings",
+    "UpdateWorkspaceSettingsRequest",
     # Clients
     "OmoiOSClient",
+    "AsyncOmoiOSClient",
     "MockOmoiOSClient",
     # Exceptions
     "OmoiOSError",
     "AuthError",
     "NotFoundError",
     "ValidationError",
+    "ServerError",
 ]

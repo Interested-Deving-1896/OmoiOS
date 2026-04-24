@@ -603,7 +603,7 @@ Max Concurrent: 3 (Waves 2, 4, 5)
   - Message: `chore: scaffold SDK packages with API types and mock clients`
   - Pre-commit: `cd sdk/python && uv run pytest && cd ../../sdk/typescript && pnpm test`
 
-- [ ] 7. **Go Egress Proxy (PR-2)**
+- [x] 7. **Go Egress Proxy (PR-2)**
 
   **What to do**:
   - Create `egress-proxy/` directory with Go module

@@ -42,6 +42,10 @@ class Credential(BaseModel):
     workspace_id: str = Field(..., description="Workspace ID")
     kind: BindingKind = Field(..., description="Credential binding kind")
     name: str = Field(..., description="User-friendly name")
+    config: Optional[Dict[str, Any]] = Field(
+        None, description="Additional configuration"
+    )
+    version: int = Field(1, description="Credential version")
     created_at: datetime = Field(..., description="Creation timestamp")
     rotated_at: Optional[datetime] = Field(
         None, description="Last rotation timestamp"
@@ -51,11 +55,12 @@ class Credential(BaseModel):
 class CreateCredentialRequest(BaseModel):
     """Request to create a credential."""
 
+    workspace_id: str = Field(..., description="Workspace ID")
     kind: BindingKind = Field(..., description="Credential binding kind")
     name: str = Field(..., description="User-friendly name")
     value: str = Field(..., description="Credential value (encrypted at rest)")
-    workspace_id: Optional[str] = Field(
-        None, description="Workspace ID (optional)"
+    config: Optional[Dict[str, Any]] = Field(
+        None, description="Additional configuration (e.g., OAuth scopes)"
     )
 
 
@@ -94,6 +99,7 @@ class CreateEnvironmentRequest(BaseModel):
 
     name: str = Field(..., description="Environment name")
     description: Optional[str] = Field(None, description="Optional description")
+    org_id: str = Field(..., description="Organization ID")
 
 
 class CreateEnvironmentVersionRequest(BaseModel):
@@ -111,7 +117,7 @@ class Artifact(BaseModel):
     workspace_id: str = Field(..., description="Workspace ID")
     name: str = Field(..., description="Artifact name")
     storage_backend: str = Field(..., description="Storage backend (local, s3)")
-    storage_path: str = Field(..., description="Storage path")
+    storage_path: Optional[str] = Field(None, description="Storage path")
     checksum: str = Field(..., description="SHA-256 checksum")
     size_bytes: int = Field(..., description="File size in bytes")
     content_type: Optional[str] = Field(None, description="MIME content type")
@@ -169,4 +175,18 @@ class WorkspaceSettings(BaseModel):
     )
     allowed_binding_kinds: list[BindingKind] = Field(
         ..., description="Allowed credential binding kinds"
+    )
+
+
+class UpdateWorkspaceSettingsRequest(BaseModel):
+    """Request to update workspace settings."""
+
+    egress_allowlist: Optional[list[str]] = Field(
+        None, description="Allowed egress hostnames"
+    )
+    max_artifact_size_mb: Optional[int] = Field(
+        None, description="Maximum artifact size in MB"
+    )
+    allowed_binding_kinds: Optional[list[BindingKind]] = Field(
+        None, description="Allowed credential binding kinds"
     )

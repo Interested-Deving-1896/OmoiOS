@@ -57,6 +57,8 @@ class MockOmoiOSClient(OmoiOSClient):
             workspace_id="ws_1",
             kind=BindingKind.BEARER_SECRET,
             name="test-api-key",
+            config={},
+            version=1,
             created_at=now,
             rotated_at=None,
         )
@@ -161,9 +163,11 @@ class MockOmoiOSClient(OmoiOSClient):
         now = datetime.now()
         cred = Credential(
             id=f"cred_{uuid.uuid4().hex[:8]}",
-            workspace_id=request.workspace_id or "ws_1",
+            workspace_id=request.workspace_id,
             kind=request.kind,
             name=request.name,
+            config=request.config or {},
+            version=1,
             created_at=now,
             rotated_at=None,
         )
@@ -198,7 +202,7 @@ class MockOmoiOSClient(OmoiOSClient):
         now = datetime.now()
         env = Environment(
             id=f"env_{uuid.uuid4().hex[:8]}",
-            org_id="org_1",
+            org_id=request.org_id,
             name=request.name,
             description=request.description,
             created_at=now,
