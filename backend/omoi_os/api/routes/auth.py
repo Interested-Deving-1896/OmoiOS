@@ -644,10 +644,8 @@ async def create_api_key(
         expires_in_days=request.expires_in_days,
     )
 
-    response = APIKeyWithSecret.model_validate(api_key)
-    response.key = full_key  # Add full key to response
-
-    return response
+    base = APIKeyResponse.model_validate(api_key).model_dump()
+    return APIKeyWithSecret(**base, key=full_key)
 
 
 @router.get("/api-keys", response_model=List[APIKeyResponse])

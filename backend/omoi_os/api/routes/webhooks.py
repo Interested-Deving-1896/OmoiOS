@@ -15,7 +15,7 @@ from __future__ import annotations
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator
 
 from omoi_os.config import is_feature_enabled
@@ -195,7 +195,6 @@ async def create_subscription(
             url=request.url,
             events=request.events,
             secret=request.secret,
-            active=request.active,
         )
 
         logger.info(

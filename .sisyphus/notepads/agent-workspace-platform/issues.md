@@ -102,3 +102,9 @@ When creating a new migration:
 ## 2026-04-23 — Verification note
 
 - `just test-unit` did not finish within two verification attempts in this environment (timed out at ~57% after 10 minutes); targeted `tests/unit/test_workspace_isolation.py` passed.
+
+## 2026-04-23 — F4 scope fidelity verification
+
+- F4 scope fidelity rejected: only Task 7 stayed within the strict file-isolation checklist; Tasks 3, 4, 5, 8, 10, and 12 had out-of-scope effective or working-tree changes.
+- The required `main..HEAD` unaccounted-change command is empty because work is currently on local `main`; `origin/main..HEAD` exposes broad unrelated committed deltas, and the working tree has additional unaccounted test/service changes.
+- Evidence saved to `.sisyphus/evidence/f4-scope-fidelity.txt`.

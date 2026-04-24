@@ -157,6 +157,44 @@ async def upload_artifact(
             filename=file.filename,
         )
 
+        # Fire `artifact.uploaded` webhook if the subscriber feature is on.
+        # Best-effort: never block the upload response on delivery.
+        if is_feature_enabled("webhooks_enabled"):
+            try:
+                from sqlalchemy import select
+                from omoi_os.config import get_app_settings
+                from omoi_os.models.workspace import Workspace
+                from omoi_os.services.database import DatabaseService
+                from omoi_os.services.webhook_service import get_webhook_service
+
+                settings = get_app_settings()
+                db = DatabaseService(connection_string=settings.database.url)
+                org_id = None
+                with db.get_session() as s:
+                    ws = s.execute(
+                        select(Workspace).where(Workspace.id == workspace_id)
+                    ).scalar_one_or_none()
+                    if ws:
+                        org_id = ws.organization_id
+
+                if org_id is not None:
+                    await get_webhook_service().trigger_event(
+                        org_id=org_id,
+                        event="artifact.uploaded",
+                        payload_data={
+                            "artifact_id": str(artifact.id),
+                            "workspace_id": str(workspace_id),
+                            "name": file.filename,
+                            "content_type": final_content_type,
+                        },
+                    )
+            except Exception as hook_exc:  # noqa: BLE001 — intentional best-effort
+                logger.warning(
+                    "artifact.uploaded webhook dispatch failed",
+                    artifact_id=str(artifact.id),
+                    error=str(hook_exc),
+                )
+
         return ArtifactResponse(artifact).to_dict()
 
     except HTTPException:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from omoi_os.cli.event_stream import (
     EVENT_ICONS,

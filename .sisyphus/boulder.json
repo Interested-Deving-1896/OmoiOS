@@ -18,7 +18,14 @@
     "ses_242f37a4effeiJLnPJIBkQ5DJr",
     "ses_242dbfb61ffeSqa0TqzXh0MPXx",
     "ses_242dbf0f5ffecgqJDJ7BRQE1e3",
-    "ses_242d25ba8ffe0CiVw1ekB85fsC"
+    "ses_242d25ba8ffe0CiVw1ekB85fsC",
+    "ses_242b537a9ffeHEww4NnZTkPtCp",
+    "ses_242b354cbfferGkkAOolOvJXXq",
+    "ses_242b32f9bffe8eySadUJstsoJb",
+    "ses_242b33fddffedUEFWyLVbEiLIs",
+    "ses_242b34934ffeS0TGpln2MrvN8n",
+    "ses_24290e39effe6W4jUzsKzQN8Hy",
+    "ses_24290f16affe92bMzE85z5jxSc"
   ],
   "plan_name": "agent-workspace-platform",
   "agent": "atlas",
@@ -67,6 +74,24 @@
       "agent": "Sisyphus-Junior",
       "category": "deep",
       "updated_at": "2026-04-24T02:19:33.960Z"
+    },
+    "todo:11": {
+      "task_key": "todo:11",
+      "task_label": "11",
+      "task_title": "**TypeScript SDK Implementation**",
+      "session_id": "ses_242b537a9ffeHEww4NnZTkPtCp",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-24T02:23:12.035Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Plan Compliance Audit** — `oracle`",
+      "session_id": "ses_24290f16affe92bMzE85z5jxSc",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-04-24T03:06:56.622Z"
     }
   }
 }

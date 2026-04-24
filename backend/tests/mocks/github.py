@@ -3,7 +3,6 @@
 Provides in-memory GitHub operations for testing without API calls.
 """
 
-from typing import Any
 
 
 class MockGitHubService:

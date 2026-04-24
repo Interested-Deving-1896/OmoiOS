@@ -1,6 +1,5 @@
 """Tests for branch strategy preview."""
 
-import pytest
 import json
 import dataclasses
 from omoi_os.services.branch_preview import (

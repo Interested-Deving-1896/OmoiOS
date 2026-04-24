@@ -6,10 +6,8 @@ Security-critical: ensures no plaintext credentials in logs or errors.
 
 import os
 import pytest
-from typing import Optional
 from unittest.mock import MagicMock, patch
 
-from cryptography.fernet import Fernet, InvalidToken
 
 from omoi_os.services.credential_encryption import (
     CredentialEncryptionService,

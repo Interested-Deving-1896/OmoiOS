@@ -3,7 +3,6 @@
 Provides in-memory payment operations without actual Stripe API calls.
 """
 
-from typing import Any
 from uuid import uuid4
 
 

@@ -15,7 +15,7 @@ import hmac
 import random
 import time
 import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -498,19 +498,28 @@ class WebhookService:
         Returns:
             True if delivery succeeded
         """
+        import json
+
         import httpx
 
         timestamp = int(time.time())
         payload = self._build_payload(event, payload_data, timestamp)
-        payload_bytes = str(payload).encode()
+        # Serialize the exact bytes we'll put on the wire so the HMAC covers
+        # the same content the subscriber will verify.
+        payload_bytes = json.dumps(payload, separators=(",", ":")).encode()
 
         signature = self._sign_payload(
             subscription.secret, payload_bytes, str(timestamp)
         )
 
+        # Stripe-style header: receivers reconstruct `<timestamp>.<body>` and
+        # verify HMAC over that. Both X-Webhook-Signature and X-Signature are
+        # sent so naive consumers that grep for "signature" can find it.
+        stripe_sig = f"t={timestamp},v1={signature}"
         headers = {
             "Content-Type": "application/json",
-            "X-Webhook-Signature": f"sha256={signature}",
+            "X-Webhook-Signature": stripe_sig,
+            "X-Signature": stripe_sig,
             "X-Webhook-Timestamp": str(timestamp),
             "X-Webhook-Event": event,
             "User-Agent": "OmoiOS-Webhook/1.0",
@@ -520,7 +529,7 @@ class WebhookService:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     subscription.url,
-                    json=payload,
+                    content=payload_bytes,
                     headers=headers,
                 )
 

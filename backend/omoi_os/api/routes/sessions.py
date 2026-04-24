@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from omoi_os.api.dependencies import (
@@ -19,8 +19,6 @@ from omoi_os.api.dependencies import (
     get_db_service,
     get_task_queue,
     verify_task_access,
-    verify_ticket_access,
-    get_accessible_project_ids,
 )
 from omoi_os.api.routes import tasks as tasks_router
 from omoi_os.config import is_feature_enabled

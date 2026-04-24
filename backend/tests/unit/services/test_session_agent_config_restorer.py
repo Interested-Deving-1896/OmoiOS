@@ -6,10 +6,8 @@ Tests Requirements:
 - REQ-SES-003: Sandbox reference updates post-restoration
 """
 
-import json
 import pytest
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 from omoi_os.services.session_agent_config_restorer import (

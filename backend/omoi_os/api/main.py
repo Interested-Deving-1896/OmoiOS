@@ -1257,6 +1257,11 @@ app.include_router(
     credentials_broker.router, prefix="/api/v1/credentials", tags=["credentials"]
 )
 
+# Tenant-level workspaces (spec §02 — org-scoped grouping resource)
+from omoi_os.api.routes import workspaces
+
+app.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["workspaces"])
+
 # Workspace isolation routes (file, credential, environment, and egress boundaries)
 app.include_router(
     workspace_isolation.router,

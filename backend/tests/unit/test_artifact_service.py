@@ -11,19 +11,15 @@ Tests Requirements:
 import hashlib
 import io
 import os
-import tempfile
 from pathlib import Path
-from typing import AsyncIterator
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
-import pytest_asyncio
 
 from omoi_os.services.artifact_service import (
     ArtifactService,
     LocalFilesystemBackend,
     S3Backend,
-    StorageBackend,
     get_artifact_service,
     reset_artifact_service,
 )
@@ -504,7 +500,6 @@ class TestArtifactServiceSingleton:
         reset_artifact_service()
 
         # Mock settings
-        import os
         os.environ["ARTIFACTS_LOCAL_BASE_DIR"] = str(temp_storage_dir)
 
         service1 = get_artifact_service()
@@ -517,7 +512,6 @@ class TestArtifactServiceSingleton:
     @pytest.mark.unit
     def test_reset_creates_new_instance(self, temp_storage_dir: Path):
         """Test reset allows creating new instance."""
-        import os
         os.environ["ARTIFACTS_LOCAL_BASE_DIR"] = str(temp_storage_dir)
 
         service1 = get_artifact_service()

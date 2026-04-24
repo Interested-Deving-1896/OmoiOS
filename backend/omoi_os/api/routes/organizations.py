@@ -69,7 +69,9 @@ async def create_organization(
     # Get owner role
     owner_role_result = await db.execute(
         select(Role).where(
-            Role.name == "owner", Role.is_system is True, Role.organization_id.is_(None)
+            Role.name == "owner",
+            Role.is_system.is_(True),
+            Role.organization_id.is_(None),
         )
     )
     owner_role = owner_role_result.scalar_one()
@@ -433,7 +435,7 @@ async def list_roles(
     # Include system roles if requested
     if include_system:
         query = select(Role).where(
-            (Role.organization_id == org_id) | (Role.is_system is True)
+            (Role.organization_id == org_id) | (Role.is_system.is_(True))
         )
 
     result = await db.execute(query)

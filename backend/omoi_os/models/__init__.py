@@ -85,8 +85,9 @@ from omoi_os.models.mcp_server import (
 )
 from omoi_os.models.workspace import (
     AgentWorkspace,
-    WorkspaceCommit,
     MergeConflictResolution,
+    Workspace,
+    WorkspaceCommit,
 )
 from omoi_os.models.workspace_settings import WorkspaceSettings
 
@@ -184,6 +185,7 @@ __all__ = [
     "Artifact",
     "Environment",
     "EnvironmentVersion",
+    "Workspace",
     "WorkspaceCommit",
     "WorkspaceSettings",
     "MergeConflictResolution",

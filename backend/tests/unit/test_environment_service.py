@@ -8,16 +8,13 @@ Tests Requirements:
 - REQ-ENV-005: Variable type validation (string, secret, json)
 """
 
-import os
 from uuid import UUID, uuid4
 
 import pytest
-import pytest_asyncio
 
 from omoi_os.models.environment import Environment, EnvironmentVersion
 from omoi_os.services.credential_encryption import (
     CredentialEncryptionService,
-    get_credential_encryption_service,
     reset_credential_encryption_service,
 )
 from omoi_os.services.database import DatabaseService

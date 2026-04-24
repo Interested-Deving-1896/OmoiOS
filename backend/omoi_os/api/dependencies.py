@@ -472,6 +472,34 @@ async def get_current_user(
         # Verify JWT token
         token_data = auth_service.verify_token(token, token_type="access")
         if not token_data:
+            # Fall back to API-key auth. Platform/SDK callers bear sk_live_…
+            # tokens that never parse as JWTs; they resolve to the owning user.
+            import hashlib
+            from sqlalchemy import select as _select
+            from omoi_os.models.auth import APIKey
+            from omoi_os.utils.datetime import utc_now
+
+            hashed = hashlib.sha256(token.encode()).hexdigest()
+            api_key = session.execute(
+                _select(APIKey).where(
+                    APIKey.hashed_key == hashed,
+                    APIKey.is_active.is_(True),
+                )
+            ).scalar_one_or_none()
+            if api_key and api_key.user_id:
+                if api_key.expires_at and api_key.expires_at <= utc_now():
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="API key expired",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+                user = session.get(User, api_key.user_id)
+                if user and not user.deleted_at:
+                    _ = user.attributes  # force-load JSONB before detach
+                    session.refresh(user)
+                    session.expunge(user)
+                    return user
+
             logger.warning("Token verification failed in get_current_user")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -692,6 +720,36 @@ async def get_current_user_from_token(
     if api_key_result:
         user, api_key = api_key_result
         return user
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def get_auth_context(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    auth_service: "AuthService" = Depends(get_auth_service),
+) -> tuple["User", Optional[UUID]]:
+    """Resolve the caller to (user, api_key_org_id).
+
+    For API-key callers, the second element is the org the key was minted for
+    (may be None for user-scoped keys). For JWT callers, it is always None so
+    the route can fall back to the user's org memberships.
+    """
+    token = credentials.credentials
+
+    token_data = auth_service.verify_token(token, token_type="access")
+    if token_data:
+        user = await auth_service.get_user_by_id(token_data.user_id)
+        if user:
+            return user, None
+
+    api_key_result = await auth_service.verify_api_key(token)
+    if api_key_result:
+        user, api_key = api_key_result
+        return user, api_key.organization_id
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

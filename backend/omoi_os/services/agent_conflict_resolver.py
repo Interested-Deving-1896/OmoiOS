@@ -88,7 +88,7 @@ class AgentConflictResolver:
 
     Usage:
         resolver = AgentConflictResolver(
-            api_key="sk-ant-...",
+            api_key=os.environ["ANTHROPIC_API_KEY"],
             model="claude-sonnet-4-20250514",
         )
 

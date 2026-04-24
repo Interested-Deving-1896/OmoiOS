@@ -1,6 +1,5 @@
 """Tests for spec pipeline fixture mode."""
 
-import asyncio
 import json
 import pytest
 from omoi_os.services.fixture_phase_runner import (

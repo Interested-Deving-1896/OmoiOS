@@ -17,6 +17,7 @@ OmoiOS is a spec-driven, multi-agent orchestration system. Users describe a feat
 | [backend/CLAUDE.md](backend/CLAUDE.md) | Backend conventions, patterns, anti-patterns | Before writing Python |
 | [CLAUDE.md](CLAUDE.md) | Monorepo structure, dev commands, ports | Always |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Branch conventions, PR process, testing | Before submitting changes |
+| [docs/rules/](docs/rules/README.md) | Per-mistake rules — tripwires we've already hit (SQLAlchemy session handling, reserved column names, feature flag gotchas) | Before editing dependencies, route handlers, or models |
 
 ## Repository Map
 

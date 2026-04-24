@@ -40,9 +40,9 @@ class CredentialEncryptionService:
     
     Example:
         >>> service = CredentialEncryptionService(encryption_key="...")
-        >>> encrypted = service.encrypt("sk-test-key")
+        >>> encrypted = service.encrypt("example-plaintext")
         >>> decrypted = service.decrypt(encrypted)
-        >>> assert decrypted == "sk-test-key"
+        >>> assert decrypted == "example-plaintext"
     
     Security:
         - Never logs plaintext or encrypted values

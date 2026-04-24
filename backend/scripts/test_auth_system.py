@@ -127,7 +127,7 @@ async def main():
         try:
             # Get owner role
             result = await session.execute(
-                select(Role).where(Role.name == "owner", Role.is_system is True)
+                select(Role).where(Role.name == "owner", Role.is_system.is_(True))
             )
             owner_role = result.scalar_one()
 

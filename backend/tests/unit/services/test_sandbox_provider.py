@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 from omoi_os.services.sandbox_provider import (
     SandboxResult,
     SandboxStatus,
-    SandboxProvider,
 )
 from omoi_os.services.local_docker_provider import LocalDockerProvider, ContainerInfo
 from omoi_os.services.daytona_provider import DaytonaProvider

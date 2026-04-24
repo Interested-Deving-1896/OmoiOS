@@ -163,9 +163,23 @@ pnpm lint                     # Lint check
 
 ## Critical Rules
 
+> **Full rules directory**: [`docs/rules/`](docs/rules/README.md). Each file
+> captures one class of recurring bug — the stack trace, why it happens in
+> this codebase, and the pattern that prevents it. Check the index before
+> writing dependencies, route handlers, or models.
+
 ### SQLAlchemy Reserved Keywords (NEVER USE)
 - `metadata` - Use `change_metadata`, `item_metadata`, `config_data`
 - `registry` - Use `agent_registry`, `service_registry`
+- Full write-up: [`docs/rules/sqlalchemy-reserved-keywords.md`](docs/rules/sqlalchemy-reserved-keywords.md)
+
+### SQLAlchemy Session Handling (DetachedInstanceError)
+Any FastAPI dependency that loads an ORM object inside `with db.get_session()` and returns it **must** force-load lazy attributes, call `session.refresh(obj)`, then `session.expunge(obj)` before returning. Skipping this produces `DetachedInstanceError` at the caller's access site, nowhere near the real bug.
+- Full write-up: [`docs/rules/sqlalchemy-session-handling.md`](docs/rules/sqlalchemy-session-handling.md)
+
+### Feature-Flagged v1 API Surfaces
+Agent-workspace v1 surfaces (`sessions_api_v1`, `environments_v1`, `broker_enabled`, `egress_proxy_enabled`, `artifacts_unified_v1`, `webhooks_enabled`) default to **off** and return 404. Enable via `FEATURE_*=true` in `backend/.env`, then **restart** uvicorn (`--reload` won't pick up env vars).
+- Full write-up: [`docs/rules/feature-flag-surfaces.md`](docs/rules/feature-flag-surfaces.md)
 
 ### LLM Service Usage
 Always use `structured_output()` for LLM responses needing structured data:

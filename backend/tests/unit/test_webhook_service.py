@@ -13,21 +13,16 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import time
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
-import pytest_asyncio
 
 from omoi_os.services.webhook_service import (
-    WebhookDeliveryError,
     WebhookService,
     WebhookSubscriptionError,
-    get_webhook_service,
     reset_webhook_service,
 )
 from omoi_os.models.webhook import WebhookDeliveryStatus, WebhookSubscription

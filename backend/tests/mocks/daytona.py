@@ -3,7 +3,6 @@
 Provides in-memory sandbox tracking without actual Daytona API calls.
 """
 
-from typing import Any
 from uuid import uuid4
 
 

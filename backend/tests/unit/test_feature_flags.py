@@ -1,6 +1,5 @@
 """Unit tests for feature flags configuration."""
 
-import pytest
 
 from omoi_os.config import (
     FeatureFlagsSettings,

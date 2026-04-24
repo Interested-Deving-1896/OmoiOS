@@ -1,12 +1,11 @@
 """Tests for git provider abstraction."""
 
-import importlib
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from omoi_os.services.git_provider import BranchInfo, GitProvider, PullRequestInfo
+from omoi_os.services.git_provider import BranchInfo, PullRequestInfo
 from omoi_os.services.github_provider import GitHubProvider
 from omoi_os.services.local_git_provider import LocalGitProvider
 

@@ -10,7 +10,6 @@ Tests Requirements:
 - REQ-CRED-007: Audit logging for all operations
 """
 
-import os
 from uuid import UUID, uuid4
 
 import pytest
@@ -27,7 +26,6 @@ from omoi_os.services.credential_broker import (
 )
 from omoi_os.services.credential_encryption import (
     CredentialEncryptionService,
-    get_credential_encryption_service,
     reset_credential_encryption_service,
 )
 from omoi_os.services.database import DatabaseService
