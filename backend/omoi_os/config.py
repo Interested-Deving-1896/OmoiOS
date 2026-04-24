@@ -838,6 +838,52 @@ class DemoSettings(OmoiBaseSettings):
     confirm_all: bool = True
 
 
+class ArtifactSettings(OmoiBaseSettings):
+    """
+    Artifact storage configuration settings.
+
+    Precedence: YAML defaults (config/base.yaml + config/<env>.yaml) < environment variables < init kwargs.
+    """
+
+    yaml_section = "artifacts"
+    model_config = SettingsConfigDict(
+        env_prefix="ARTIFACTS_",
+        extra="ignore",
+    )
+
+    # Local filesystem settings
+    local_base_dir: str = "/tmp/omoios-artifacts"
+
+    # S3 settings (v1 interface only)
+    s3_bucket: Optional[str] = None
+    s3_region: str = "us-east-1"
+    s3_access_key: Optional[str] = None
+    s3_secret_key: Optional[str] = None
+
+
+def load_artifact_settings() -> ArtifactSettings:
+    """Load artifact settings (cached)."""
+    return get_app_settings().artifacts
+
+class FeatureFlagsSettings(OmoiBaseSettings):
+    """
+    Feature flags for agent workspace platform.
+    All flags default to False and must be explicitly enabled.
+    """
+    yaml_section = "feature_flags"
+    model_config = SettingsConfigDict(
+        env_prefix="FEATURE_",
+        extra="ignore",
+    )
+
+    # Agent workspace platform feature flags
+    sessions_api_v1: bool = False
+    environments_v1: bool = False
+    broker_enabled: bool = False
+    egress_proxy_enabled: bool = False
+    artifacts_unified_v1: bool = False
+    webhooks_enabled: bool = False
+
 def load_auth_settings() -> AuthSettings:
     return get_app_settings().auth
 
@@ -875,6 +921,8 @@ class AppSettings:
         self.posthog = PostHogSettings()
         self.title_generation = TitleGenerationSettings()
         self.demo = DemoSettings()
+        self.feature_flags = FeatureFlagsSettings()
+        self.artifacts = ArtifactSettings()
 
     @property
     def database_url(self) -> str:
@@ -897,6 +945,25 @@ def reload_app_settings() -> AppSettings:
     global settings  # type: ignore[global-variable-not-assigned]
     settings = app_settings.auth
     return app_settings
+
+
+def load_feature_flags_settings() -> FeatureFlagsSettings:
+    """Load feature flags settings (cached)."""
+    return get_app_settings().feature_flags
+
+
+def is_feature_enabled(flag_name: str) -> bool:
+    """
+    Check if a feature flag is enabled.
+
+    Args:
+        flag_name: The name of the feature flag to check
+
+    Returns:
+        True if the feature is enabled, False otherwise
+    """
+    flags = load_feature_flags_settings()
+    return getattr(flags, flag_name, False)
 
 
 settings = get_app_settings().auth

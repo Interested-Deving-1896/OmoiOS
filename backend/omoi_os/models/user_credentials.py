@@ -70,6 +70,13 @@ class UserCredential(Base):
         comment="The API key or token",
     )
 
+    # Encrypted API key (Fernet AES-256-GCM)
+    encrypted_value: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Encrypted API key (Fernet AES-256-GCM)",
+    )
+
     # Optional configuration
     base_url: Mapped[Optional[str]] = mapped_column(
         String(500),

@@ -31,6 +31,46 @@ init_sentry()
 init_posthog()
 from omoi_os.mcp.fastmcp_server import mcp_app
 from omoi_os.api.routes import (
+    artifacts,
+    agents,
+    alerts,
+    analytics_proxy,
+    auth,
+    billing,
+    board,
+    branch_workflow,
+    collaboration,
+    commits,
+    costs,
+    debug,
+    diagnostic,
+    events,
+    explore,
+    github,
+    github_repos,
+    graph,
+    guardian,
+    memory,
+    mcp,
+    oauth,
+    onboarding,
+    organizations,
+    phases,
+    preview,
+    projects,
+    prototype,
+    public,
+    quality,
+    reasoning,
+    results,
+    sandbox,
+    specs,
+    tasks,
+    tickets,
+    validation,
+    watchdog,
+)
+    artifacts,
     agents,
     alerts,
     analytics_proxy,
@@ -1231,6 +1271,14 @@ app.include_router(explore.router, prefix="/api/v1", tags=["explore"])
 # Analytics proxy routes (for bypassing ad blockers)
 app.include_router(analytics_proxy.router, prefix="/ingest", tags=["analytics"])
 
+# Artifact routes (unified artifact storage)
+app.include_router(artifacts.router, prefix="/api/v1/artifacts", tags=["artifacts"])
+
+# Environment routes (versioned environment configs)
+from omoi_os.api.routes import environments
+
+app.include_router(environments.router, prefix="/api/v1/environments", tags=["environments"])
+app.include_router(artifacts.router, prefix="/api/v1/artifacts", tags=["artifacts"])
 # Mount FastMCP server at /mcp
 app.mount("/mcp", mcp_app)
 

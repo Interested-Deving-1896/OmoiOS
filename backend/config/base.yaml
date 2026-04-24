@@ -199,3 +199,19 @@ sandbox:
   local_mount_workspace: null
 
   local_api_base_url: "http://host.docker.internal:18000"
+
+# Feature flags for agent workspace platform
+feature_flags:
+  sessions_api_v1: false
+  environments_v1: false
+  broker_enabled: false
+  egress_proxy_enabled: false
+  artifacts_unified_v1: false
+  webhooks_enabled: false
+
+
+# Artifact storage settings
+artifacts:
+  local_base_dir: /tmp/omoios-artifacts
+  s3_bucket: null
+  s3_region: us-east-1

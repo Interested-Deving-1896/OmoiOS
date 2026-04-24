@@ -1,0 +1,35 @@
+{
+  "active_plan": "/Users/kevinhill/Coding/Experiments/senior-sandbox/omoi_os/.sisyphus/plans/agent-workspace-platform.md",
+  "started_at": "2026-04-23T22:23:28.309Z",
+  "session_ids": [
+    "ses_2438f1c2cffeZQe48Vh7rhFnfQ",
+    "ses_2438b8530ffen4pEM1pSVedtn4",
+    "ses_2438b940dffeqZOdMAUAY71muM",
+    "ses_24374cea4ffe3YQ9yzbVKlskuD",
+    "ses_24368cd02ffe7UDj922zXPKVTd",
+    "ses_2436846d1ffeRhU1XIR2usysnY",
+    "ses_243479243ffeuNUbsME7Ki5tX7"
+  ],
+  "plan_name": "agent-workspace-platform",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "**Encrypt Provider API Keys (PR-0c)**",
+      "session_id": "ses_24374cea4ffe3YQ9yzbVKlskuD",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-04-23T23:02:42.190Z"
+    },
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "**Credential Broker Service (PR-4 · lines 444–566)**",
+      "session_id": "ses_2436846d1ffeRhU1XIR2usysnY",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-04-24T00:01:17.061Z"
+    }
+  }
+}
