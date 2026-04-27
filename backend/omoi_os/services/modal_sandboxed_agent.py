@@ -37,6 +37,7 @@ import httpx
 from httpx_sse import aconnect_sse
 
 from omoi_os.logging import get_logger
+from omoi_os.services.opencode_events import should_forward as _opencode_should_forward
 
 
 logger = get_logger(__name__)
@@ -696,29 +697,14 @@ async def _opencode_session_exists(
 
 
 def _event_matches_session(evt: Any, opencode_session_id: str) -> bool:
-    """Check whether an opencode event is scoped to our session.
+    """Should this event be forwarded to our SSE consumer?
 
-    opencode emits a global ``/event`` feed; consumers filter by sessionID.
-    Different event types put the sid in different places — we check all
-    the spots.
+    Delegates to ``services.opencode_events.should_forward`` which knows
+    the full vocabulary: session-scoped events get sid-matched, workspace
+    events from our sandbox pass through, global/transport events are
+    dropped, and unknown types are accepted when they claim our sid.
     """
-    if not isinstance(evt, dict):
-        return False
-    props = evt.get("properties") or {}
-    if not isinstance(props, dict):
-        return False
-    if props.get("sessionID") == opencode_session_id:
-        return True
-    part = props.get("part") or {}
-    if isinstance(part, dict) and part.get("sessionID") == opencode_session_id:
-        return True
-    info = props.get("info") or {}
-    if isinstance(info, dict):
-        if info.get("sessionID") == opencode_session_id:
-            return True
-        if info.get("id") == opencode_session_id:
-            return True
-    return False
+    return _opencode_should_forward(evt, opencode_session_id)
 
 
 def _assemble_text(parts: list) -> str:

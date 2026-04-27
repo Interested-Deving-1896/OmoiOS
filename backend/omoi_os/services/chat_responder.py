@@ -39,6 +39,7 @@ from omoi_os.logging import get_logger
 from omoi_os.models.event import Event
 from omoi_os.services.database import DatabaseService
 from omoi_os.services.event_bus import get_event_bus
+from omoi_os.services.opencode_events import is_high_volume
 from omoi_os.services.session_event_envelope import (
     ACTOR_AGENT,
     SessionEventEnvelope,
@@ -125,6 +126,11 @@ def _make_on_part(
 
     async def on_part(opencode_event_type: str, properties: dict) -> None:
         outbound_type = _envelope_event_type(opencode_event_type)
+        # High-volume event types (token deltas, status flips, watcher
+        # pings) bypass the DB and ride only the Redis pubsub channel
+        # so the events table doesn't blow up. Snapshot/terminal events
+        # still persist for SSE replay.
+        transient = is_high_volume(opencode_event_type)
         try:
             with db.get_session() as sess:
                 SessionEventEnvelope(sess, bus).emit(
@@ -132,6 +138,7 @@ def _make_on_part(
                     event_type=outbound_type,
                     actor=ACTOR_AGENT,
                     data=properties or {},
+                    transient=transient or None,
                 )
                 sess.commit()
         except Exception as exc:  # noqa: BLE001

@@ -259,6 +259,87 @@ class ConnectApp(App):
             # Turn boundary — ready for the next prompt. Live bubbles stay
             # but their per-turn keys clear so the next assistant message
             # gets fresh part ids without colliding.
+            self._log_event("session.idle · turn complete")
+            return
+        if etype == "session.status":
+            status = data.get("status")
+            if isinstance(status, dict):
+                state = status.get("type") or status.get("status") or "?"
+            else:
+                state = str(status)
+            self._log_event(f"session.status · {state}")
+            return
+        if etype == "session.error":
+            err = data.get("error") or {}
+            name = err.get("name") if isinstance(err, dict) else None
+            msg = err.get("message") if isinstance(err, dict) else None
+            self._log_event(f"session.error · {name or '?'}: {msg or '<no message>'}")
+            return
+        if etype == "session.compacted":
+            self._log_event("session.compacted · context summarized")
+            return
+        if etype == "session.diff":
+            diffs = data.get("diff") or []
+            count = len(diffs) if isinstance(diffs, list) else 0
+            self._log_event(f"session.diff · {count} file(s)")
+            return
+        if etype in ("session.permission.asked", "session.permission.updated"):
+            perm = data.get("permission") or data
+            tool = perm.get("title") or perm.get("type") or "?"
+            self._log_event(f"{etype} · {tool}")
+            return
+        if etype == "session.permission.replied":
+            self._log_event(
+                f"session.permission.replied · {data.get('response') or '?'}"
+            )
+            return
+        if etype.startswith("session.question."):
+            q = data.get("question") or data
+            text = q.get("text") if isinstance(q, dict) else None
+            self._log_event(f"{etype} · {text or '?'}")
+            return
+        if etype == "session.command.executed":
+            self._log_event(f"command · {data.get('name') or '?'}")
+            return
+        if etype == "session.file.edited":
+            self._log_event(f"file.edited · {data.get('file') or '?'}")
+            return
+        if etype == "session.file.watcher.updated":
+            # high-volume — only show if path is known, suppress otherwise
+            path = data.get("path")
+            if isinstance(path, str):
+                self._log_event(f"file.watcher · {path}")
+            return
+        if etype == "session.lsp.client.diagnostics":
+            server = data.get("serverID") or "?"
+            path = data.get("path") or "?"
+            self._log_event(f"lsp · {server} · {path}")
+            return
+        if etype == "session.lsp.updated":
+            self._log_event("lsp.updated")
+            return
+        if etype.startswith("session.pty."):
+            kind = etype.rsplit(".", 1)[-1]
+            info = data.get("info") or {}
+            ident = (
+                info.get("id") if isinstance(info, dict) else None
+            ) or data.get("id")
+            extra = ""
+            if kind == "exited":
+                extra = f" · exit {data.get('exitCode')}"
+            self._log_event(f"pty.{kind} · {ident or '?'}{extra}")
+            return
+        if etype == "session.message.removed":
+            self._log_event(f"message.removed · {data.get('messageID') or '?'}")
+            return
+        if etype == "session.message.part.removed":
+            part_id = data.get("partID")
+            if isinstance(part_id, str):
+                self._part_text.pop(part_id, None)
+                self._part_type.pop(part_id, None)
+                bubble = self._part_bubbles.pop(part_id, None)
+                if bubble is not None:
+                    bubble.remove()
             return
         self._log_event(f"{etype} · {actor}")
 
