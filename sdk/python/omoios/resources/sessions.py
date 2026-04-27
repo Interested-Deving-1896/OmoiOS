@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional
+from typing import Any, AsyncIterator, Callable, Dict, List, Optional
 from urllib.parse import urljoin
 
 from omoios.resources.base import BaseResource
@@ -304,15 +304,11 @@ class SessionsResource(BaseResource):
         import time
 
         stream_path = f"/api/v1/sessions/{session_id}/events"
-        self._client._emit_telemetry(
-            {"kind": "stream_open", "path": stream_path}
-        )
+        self._client._emit_telemetry({"kind": "stream_open", "path": stream_path})
         started = time.perf_counter()
         frames = 0
         try:
-            async with aconnect_sse(
-                self._client._http, "GET", url, headers=headers
-            ) as es:
+            async with aconnect_sse(self._client._http, "GET", url, headers=headers) as es:
                 async for sse in es.aiter_sse():
                     if not sse.data:
                         continue
@@ -332,18 +328,14 @@ class SessionsResource(BaseResource):
                 }
             )
 
-    def connect(
-        self, session_id: str, user_token: Optional[str] = None
-    ) -> "SessionChannel":
+    def connect(self, session_id: str, user_token: Optional[str] = None) -> "SessionChannel":
         """Open a multiplayer WebSocket channel (spec §07).
 
         `user_token` defaults to the client's active JWT; pass a different
         one for a delegated session.
         """
         token = user_token or self._client.jwt_token or self._client.api_key
-        return SessionChannel(
-            client=self._client, session_id=session_id, token=token or ""
-        )
+        return SessionChannel(client=self._client, session_id=session_id, token=token or "")
 
 
 # ─── multiplayer channel ────────────────────────────────────────────────────
@@ -377,6 +369,13 @@ class SessionChannel:
         self._reader_task = None
         self._handlers: Dict[str, List[Callable[[Dict[str, Any]], Any]]] = {}
         self._star_handlers: List[Callable[[Dict[str, Any]], Any]] = []
+        # True until the read loop sees a transport error / remote close.
+        # Gates outbound sends so callers don't spam a half-closed socket.
+        self._open: bool = False
+        # Optional async callback fired exactly once when the socket closes
+        # for ANY reason (graceful, remote-initiated, transport error). The
+        # TUI uses it to surface "disconnected" to the user.
+        self._on_close: Optional[Callable[[Optional[BaseException]], Any]] = None
 
     # ── event subscriptions ────────────────────────────────────────────────
 
@@ -390,6 +389,20 @@ class SessionChannel:
             self._star_handlers.append(fn)
         else:
             self._handlers.setdefault(event_type, []).append(fn)
+
+    def on_close(self, fn: Callable[[Optional[BaseException]], Any]) -> None:
+        """Register a callback fired when the socket closes for any reason.
+
+        The callback receives the exception that triggered the close, or
+        None on a clean remote-close. It's fired exactly once per channel
+        — subsequent close events are no-ops.
+        """
+        self._on_close = fn
+
+    @property
+    def is_open(self) -> bool:
+        """True iff the socket is connected AND not closing."""
+        return self._open
 
     # ── lifecycle ─────────────────────────────────────────────────────────
 
@@ -425,6 +438,7 @@ class SessionChannel:
         # release in `close()`.
         self._ws_ctx = aconnect_ws(url, self._client._http)
         self._ws = await self._ws_ctx.__aenter__()
+        self._open = True
         self._reader_task = asyncio.create_task(self._read_loop())
         self._client._emit_telemetry(
             {
@@ -433,19 +447,30 @@ class SessionChannel:
             }
         )
         import time as _time
+
         self._opened_at = _time.perf_counter()
         self._frames_received = 0
         return self
 
     async def send(self, message: Dict[str, Any]) -> None:
-        """Send one message frame (spec §07 shapes: message.send, cursor.moved)."""
-        if self._ws is None:
-            raise RuntimeError("Channel is not open; call .open() first")
+        """Send one message frame (spec §07 shapes: message.send, cursor.moved).
+
+        Raises RuntimeError when the socket has been remote-closed or has
+        not been opened — saves the caller from a wsproto state-machine
+        error like ``cannot be sent in state ConnectionState.REMOTE_CLOSING``.
+        """
+        if self._ws is None or not self._open:
+            raise RuntimeError("Channel is not open")
         await self._ws.send_text(json.dumps(message))
 
     async def close(self) -> None:
         """Close the WebSocket and tear down the reader task."""
         import asyncio as _asyncio
+
+        # Suppress on_close firing during graceful teardown — the caller
+        # initiated the close, so they don't need a "disconnected" signal.
+        self._on_close = None
+        self._open = False
 
         # Cancel the reader first so it doesn't try to read from a closed
         # socket during teardown. CancelledError is a BaseException in
@@ -471,6 +496,7 @@ class SessionChannel:
         # got here (explicit close or context-manager exit).
         if getattr(self, "_opened_at", None) is not None:
             import time as _time
+
             self._client._emit_telemetry(
                 {
                     "kind": "stream_close",
@@ -490,8 +516,14 @@ class SessionChannel:
     # ── internals ──────────────────────────────────────────────────────────
 
     async def _read_loop(self) -> None:
-        """Dispatch inbound frames to registered handlers."""
+        """Dispatch inbound frames to registered handlers.
+
+        Exits on socket close or transport error. Marks the channel
+        closed and fires ``on_close`` exactly once so the consumer can
+        react (e.g. stop emitting presence pings into a dead socket).
+        """
         assert self._ws is not None
+        close_exc: Optional[BaseException] = None
         try:
             while True:
                 raw = await self._ws.receive_text()
@@ -508,8 +540,17 @@ class SessionChannel:
                 if msg_type:
                     for handler in self._handlers.get(msg_type, []):
                         _maybe_await(handler, frame)
-        except Exception:  # noqa: BLE001 — socket closed or transport error
-            return
+        except BaseException as exc:  # noqa: BLE001 — capture cancel + xport
+            close_exc = exc
+        finally:
+            self._open = False
+            if self._on_close is not None:
+                cb = self._on_close
+                self._on_close = None
+                try:
+                    _maybe_await(cb, close_exc)
+                except Exception:  # noqa: BLE001 — handler errors are best-effort
+                    pass
 
 
 def _maybe_await(fn: Callable[[Any], Any], arg: Any) -> None:

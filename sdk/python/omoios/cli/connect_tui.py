@@ -31,14 +31,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from rich.panel import Panel
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Footer, Header, Input, Static
-
 
 TYPING_DEBOUNCE_SECONDS = 1.5
 EVENT_LOG_MAX_LINES = 50
@@ -188,13 +187,12 @@ class ConnectApp(App):
             # session_channel.py requires a User JWT — platform key won't auth.
             ch = self._client.sessions.connect(self.session_id, user_token=self.user_jwt)
             ch.on("*", self._on_ws_event)
+            ch.on_close(self._on_ws_close)
             self._channel = await ch.open()
             self._log_event("ws.connected")
         except Exception as exc:  # noqa: BLE001
             if not self.user_jwt:
-                self._log_event(
-                    "ws.failed · no user JWT (run `omoios signup` to mint one)"
-                )
+                self._log_event("ws.failed · no user JWT (run `omoios signup` to mint one)")
             else:
                 self._log_event(f"ws.failed · {exc}")
             self._channel = None
@@ -248,9 +246,7 @@ class ConnectApp(App):
             if actor == "agent" and self._live_message_ids:
                 self._live_message_ids.clear()
                 return
-            you = actor.startswith("user:") and (
-                self.my_user_id and self.my_user_id in actor
-            )
+            you = actor.startswith("user:") and (self.my_user_id and self.my_user_id in actor)
             chat = self.query_one("#chat", VerticalScroll)
             chat.mount(ChatBubble(actor=actor, text=text, you=you))
             chat.scroll_end(animate=False)
@@ -289,9 +285,7 @@ class ConnectApp(App):
             self._log_event(f"{etype} · {tool}")
             return
         if etype == "session.permission.replied":
-            self._log_event(
-                f"session.permission.replied · {data.get('response') or '?'}"
-            )
+            self._log_event(f"session.permission.replied · {data.get('response') or '?'}")
             return
         if etype.startswith("session.question."):
             q = data.get("question") or data
@@ -321,9 +315,7 @@ class ConnectApp(App):
         if etype.startswith("session.pty."):
             kind = etype.rsplit(".", 1)[-1]
             info = data.get("info") or {}
-            ident = (
-                info.get("id") if isinstance(info, dict) else None
-            ) or data.get("id")
+            ident = (info.get("id") if isinstance(info, dict) else None) or data.get("id")
             extra = ""
             if kind == "exited":
                 extra = f" · exit {data.get('exitCode')}"
@@ -392,9 +384,7 @@ class ConnectApp(App):
         status = state.get("status") if isinstance(state, dict) else None
         self._log_event(f"tool · {tool} · {status or 'pending'}")
 
-    def _upsert_bubble(
-        self, part_id: str, ptype: str, actor: str, text: str
-    ) -> None:
+    def _upsert_bubble(self, part_id: str, ptype: str, actor: str, text: str) -> None:
         """Mount a bubble for this part on first sight; update in place after."""
         chat = self.query_one("#chat", VerticalScroll)
         bubble = self._part_bubbles.get(part_id)
@@ -511,10 +501,36 @@ class ConnectApp(App):
         await self._safe_send({"type": "message.send", "data": {"text": text}})
 
     async def _safe_send(self, msg: Dict[str, Any]) -> None:
+        # Bail early when the channel is closed so the rendered events log
+        # doesn't fill with REMOTE_CLOSING errors. The first close already
+        # surfaced via _on_ws_close — no need to re-log.
+        if self._channel is None or not getattr(self._channel, "is_open", False):
+            return
         try:
             await self._channel.send(msg)
         except Exception as exc:  # noqa: BLE001
             self._log_event(f"send.error · {exc}")
+
+    def _on_ws_close(self, exc: Optional[BaseException]) -> None:
+        """Called once when the per-session WS closes for any reason.
+
+        Marks the channel dead so subsequent `_safe_send` calls become
+        no-ops. Surfaces the cause so the user knows whether to retry
+        with a fresh JWT or just live with SSE-only mode.
+        """
+        self._channel = None
+        if self._typing_task and not self._typing_task.done():
+            self._typing_task.cancel()
+        if exc is None:
+            self._log_event("ws.disconnected")
+            return
+        msg = str(exc) or type(exc).__name__
+        # Common failure mode: server closes with code 4401 right after
+        # handshake when the JWT is missing/expired. Surface the fix.
+        if "4401" in msg or "Authentication" in msg:
+            self._log_event("ws.disconnected · auth (rerun with fresh JWT)")
+        else:
+            self._log_event(f"ws.disconnected · {msg[:80]}")
 
     # ── slash commands ─────────────────────────────────────────────────────
 

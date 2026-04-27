@@ -288,6 +288,13 @@ def _ensure_local_credentials() -> None:
         if cached_key and cached_org and _platform_key_works(cached_key):
             os.environ["OMOIOS_PLATFORM_API_KEY"] = cached_key
             os.environ["OMOIOS_TEST_ORG_ID"] = cached_org
+            # Refresh the user JWT — access tokens expire after 15 min
+            # and the WS handler requires a *user* token (not the API key).
+            with httpx.Client(timeout=10.0) as http:
+                fresh_jwt = _try_login(http)
+            if fresh_jwt:
+                cached["jwt"] = fresh_jwt
+                _save_creds(api_key=cached_key, org_id=cached_org, jwt=fresh_jwt)
             print(f"    ✓ cached key works  ({cached_key[:18]}…)")
             _reset_poof_settings_cache()
             return
@@ -362,6 +369,12 @@ def _launch_tui(session_id: str) -> int:
     OMOIOS_PLATFORM_API_KEY) already lives in the process env after
     `_load_env_file` was called via `get_settings`.
 
+    Also exports OMOIOS_USER_JWT from the cached credentials so the
+    multiplayer WebSocket (`/api/v1/sessions/<id>/ws`) can authenticate.
+    Without it the server returns close code 4401 ("Authentication
+    required") right after handshake and the TUI sees REMOTE_CLOSING
+    on every send.
+
     Three launch paths, tried in order:
 
       1. ``omoios`` console script on $PATH — the happy path when the
@@ -371,6 +384,14 @@ def _launch_tui(session_id: str) -> int:
       3. error — neither found; the user needs to install the SDK.
     """
     import shutil
+
+    # Pull the user JWT out of the cached creds so the TUI's per-session
+    # WebSocket can authenticate. The platform API key is enough for HTTP
+    # routes but the WS handler verifies a USER access token specifically.
+    cached = _load_cached_creds() or {}
+    jwt = cached.get("jwt")
+    if isinstance(jwt, str) and jwt:
+        os.environ["OMOIOS_USER_JWT"] = jwt
 
     omoios_bin = shutil.which("omoios")
     if omoios_bin:
