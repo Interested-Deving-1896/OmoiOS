@@ -146,3 +146,14 @@ opencode.json
 backend/.env.local.railway-backup
 # Added by code-review-graph
 .code-review-graph/
+
+# Local AI tool configs / state
+.kiro/
+.qoder/
+.opencode.json
+.windsurfrules
+GEMINI.md
+QODER.md
+.handoffs/
+.claude/scheduled_tasks.lock
+chat.db

@@ -63,28 +63,28 @@ sync:
     set -e
     echo "🔄 Syncing OmoiOS monorepo..."
     echo ""
-    
+
     # --- Backend dependencies ---
     echo "🐍 Installing backend dependencies..."
     cd {{backend_dir}} && uv sync --active --group dev --group test
     cd ..
     echo "   ✅ Backend synced"
     echo ""
-    
+
     # --- Frontend dependencies ---
     echo "⚡ Installing frontend dependencies..."
     cd {{frontend_dir}} && pnpm install
     cd ..
     echo "   ✅ Frontend synced"
     echo ""
-    
+
     # --- Database migrations ---
     echo "🗄️  Running database migrations..."
     cd {{backend_dir}} && uv run python -m alembic upgrade head
     cd ..
     echo "   ✅ Migrations applied"
     echo ""
-    
+
     echo "═══════════════════════════════════════════════════════════"
     echo "✅ Monorepo sync complete!"
     echo ""
@@ -1619,3 +1619,20 @@ poof-reload:
     @./scripts/poof_tmux.sh kill
     @sleep 1
     @./scripts/poof_tmux.sh start
+
+# Show which Modal account/workspace the CLI is currently logged into.
+modal-whoami:
+    @modal profile current
+
+# List Modal profiles in ~/.modal.toml; mark active.
+modal-profile name="":
+    @if [ -z "{{name}}" ]; then ./scripts/modal_profile.sh status; \
+    else ./scripts/modal_profile.sh switch "{{name}}"; fi
+
+# Switch to the personal Modal profile (with confirm).
+modal-personal:
+    @./scripts/modal_profile.sh switch personal-account
+
+# Switch to the business / org Modal profile (with confirm).
+modal-business:
+    @./scripts/modal_profile.sh switch automation-workz
