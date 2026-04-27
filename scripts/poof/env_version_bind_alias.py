@@ -33,6 +33,7 @@ async def run(client: Any, state: dict) -> StepResult:
     db = DatabaseService(connection_string=backend_settings.database.url)
     env_id = UUID(state["env_id"])
 
+    # First read: is there already a version we can bind on?
     with db.get_session() as session:
         ev = (
             session.query(EnvironmentVersion)
@@ -40,18 +41,29 @@ async def run(client: Any, state: dict) -> StepResult:
             .order_by(EnvironmentVersion.version_number.desc())
             .first()
         )
-        if ev is None:
-            from omoios.types import CreateEnvironmentVersionRequest
+    # No version yet → create one via the API (different DB session), then
+    # open a fresh session so the SELECT sees the newly-committed row.
+    if ev is None:
+        from omoios.types import CreateEnvironmentVersionRequest
 
-            ev_resp = await client.environments.create_version(
-                env_id, CreateEnvironmentVersionRequest(variables={})
-            )
+        ev_resp = await client.environments.create_version(
+            env_id, CreateEnvironmentVersionRequest(variables={})
+        )
+        with db.get_session() as session:
             ev = (
                 session.query(EnvironmentVersion)
                 .filter(EnvironmentVersion.id == UUID(str(ev_resp.id)))
                 .first()
             )
+            if ev is None:
+                return StepResult(
+                    "FAIL",
+                    (time.perf_counter() - t) * 1000,
+                    f"created ev={ev_resp.id[:8]}… but cannot re-load it",
+                )
 
+    with db.get_session() as session:
+        ev = session.merge(ev) if ev is not None else None
         creds = dict(ev.credentials or {})
         already_bound = (
             creds.get(settings.alias, {}).get("binding_id") == state["binding_id"]
