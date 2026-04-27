@@ -1636,3 +1636,43 @@ modal-personal:
 # Switch to the business / org Modal profile (with confirm).
 modal-business:
     @./scripts/modal_profile.sh switch automation-workz
+
+# End-to-end streaming demo: probe the API, mint a session, launch the TUI.
+# Requires uvicorn already running on :18000 (see `tmux attach -t poof`).
+# Sources backend env files so OMOIOS_PLATFORM_API_KEY + co are present;
+# pulls in the SDK editable so the `omoios` binary + package are both
+# available for the TUI handoff. Pass `--no-tui` to bootstrap a session
+# without launching the TUI (useful for CI or print-only checks).
+stream-demo *ARGS:
+    @set -a; \
+    source {{backend_dir}}/.env 2>/dev/null || true; \
+    source {{backend_dir}}/.env.local 2>/dev/null || true; \
+    source {{backend_dir}}/.env.smoke-test 2>/dev/null || true; \
+    source {{backend_dir}}/.env.smoke-test.local 2>/dev/null || true; \
+    set +a; \
+    export OMOIOS_API_BASE_URL="http://localhost:{{api_port}}"; \
+    : "${FIREWORKS_API_KEY:=${LLM_FIREWORKS_API_KEY:-}}"; export FIREWORKS_API_KEY; \
+    cd {{backend_dir}} && uv run --with-editable ../sdk/python python ../scripts/stream_demo.py {{ARGS}}
+
+# Same as stream-demo but clears cached poof state first so workspace,
+# environment, and session are all freshly created.
+stream-demo-fresh *ARGS:
+    @rm -rf .sisyphus/poof-state .sisyphus/poof.state.json 2>/dev/null || true
+    @just stream-demo {{ARGS}}
+
+# Re-attach the TUI to the most recently bootstrapped session
+# (whatever stream-demo cached in .sisyphus/poof-state/stream_demo.json).
+stream-reconnect:
+    @SID=$(jq -r .session_id .sisyphus/poof-state/stream_demo.json 2>/dev/null); \
+    if [ -z "$SID" ] || [ "$SID" = "null" ]; then \
+      echo "  ✗ no cached session — run 'just stream-demo' first"; exit 1; \
+    fi; \
+    set -a; \
+    source {{backend_dir}}/.env 2>/dev/null || true; \
+    source {{backend_dir}}/.env.local 2>/dev/null || true; \
+    source {{backend_dir}}/.env.smoke-test 2>/dev/null || true; \
+    source {{backend_dir}}/.env.smoke-test.local 2>/dev/null || true; \
+    set +a; \
+    export OMOIOS_API_BASE_URL="http://localhost:{{api_port}}"; \
+    : "${FIREWORKS_API_KEY:=${LLM_FIREWORKS_API_KEY:-}}"; export FIREWORKS_API_KEY; \
+    cd {{backend_dir}} && uv run --with-editable ../sdk/python omoios sessions connect $SID
