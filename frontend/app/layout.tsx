@@ -128,7 +128,11 @@ export default function RootLayout({
         <OrganizationJsonLd />
       </head>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}>
-        <RootProvider>
+        {/* Fumadocs RootProvider mounts its own system-following next-themes
+            provider by default, which fights the forced-light provider below
+            and leaks .dark onto <html>. Disable it — the inner provider is
+            the single source of truth. */}
+        <RootProvider theme={{ enabled: false }}>
           <ThemeProvider
             attribute="class"
             defaultTheme="light"

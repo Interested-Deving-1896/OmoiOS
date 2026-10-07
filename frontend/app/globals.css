@@ -9,6 +9,11 @@
 /* Include fumadocs-ui components in Tailwind's content scanning */
 @source '../node_modules/fumadocs-ui/dist/**/*.js';
 
+/* Class-based dark mode: `dark:` utilities follow the .dark class managed by
+   next-themes, not the OS prefers-color-scheme media query (the Tailwind v4
+   default). Keeps utilities consistent with forcedTheme="light". */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ==========================================================================
    Tailwind v4 Theme Configuration
    ========================================================================== */

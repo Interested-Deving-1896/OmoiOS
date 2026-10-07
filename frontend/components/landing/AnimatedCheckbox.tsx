@@ -24,6 +24,19 @@ export function AnimatedCheckbox({
       transition={{ delay, duration: 0.3 }}
     >
       <div className="relative h-4 w-4 flex-shrink-0">
+        {/* Glow effect on completion - must live inside this relative
+            wrapper; if hoisted to the row level, -inset-1 anchors it to the
+            nearest positioned ancestor (the whole demo card) and it washes
+            over everything when a checkbox checks. */}
+        {checked && (
+          <motion.div
+            className="pointer-events-none absolute -inset-1 rounded bg-success/20 blur-sm"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: [0, 0.5, 0], scale: [0.8, 1.2, 1] }}
+            transition={{ duration: 0.5, delay }}
+          />
+        )}
+
         {/* Checkbox background */}
         <motion.div
           className={cn(
@@ -71,16 +84,6 @@ export function AnimatedCheckbox({
       >
         {label}
       </motion.span>
-
-      {/* Glow effect on completion */}
-      {checked && (
-        <motion.div
-          className="absolute -inset-1 rounded bg-success/20 blur-sm"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: [0, 0.5, 0], scale: [0.8, 1.2, 1] }}
-          transition={{ duration: 0.5, delay }}
-        />
-      )}
     </motion.div>
   );
 }
