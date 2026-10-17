@@ -58,8 +58,8 @@ Direct commits to OSP or OOC are detected and opened as PRs back to `Interested-
 | [@kivo360](https://github.com/kivo360) | 778 |
 | [@github-actions[bot]](https://github.com/apps/github-actions) | 11 |
 | [@claude](https://github.com/claude) | 7 |
+| [@Interested-Deving-1896](https://github.com/Interested-Deving-1896) | 5 |
 | [@cursoragent](https://github.com/cursoragent) | 4 |
-| [@Interested-Deving-1896](https://github.com/Interested-Deving-1896) | 4 |
 <!-- AI:end:contributors -->
 
 ## Origins
